@@ -1,0 +1,298 @@
+<section style="margin: 0 auto; padding: 0; max-width: 100%; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; color: #333; line-height: 1.8; font-size: 15px;">
+
+<!-- 标题 -->
+<section style="text-align: center; padding: 30px 16px 10px; margin-bottom: 10px;">
+<p style="font-size: 13px; color: #888; letter-spacing: 2px; margin-bottom: 12px;">2026.02.06 · AI 前沿日报</p>
+</section>
+
+<!-- 导语 -->
+<section style="margin: 0 16px 25px; padding: 16px 18px; background: linear-gradient(135deg, #f0f4ff 0%, #fef6f0 100%); border-radius: 10px; border-left: 4px solid #4a6cf7;">
+<p style="font-size: 14px; color: #555; margin: 0; line-height: 1.9;">2月5日，AI 行业上演了一场罕见的「贴身肉搏」——Anthropic 发布 Claude Opus 4.6，OpenAI 紧随其后推出 GPT-5.3-Codex，两家原计划在同一时间发布，最终 <strong style="color: #e74c3c;">Anthropic 提前 15 分钟抢先官宣</strong>。与此同时，OpenAI 还亮出了企业级 AI Agent 平台 Frontier。这一天，足以载入 AI 发展史。</p>
+</section>
+
+<!-- 分隔线 -->
+<section style="text-align: center; margin: 30px 16px;">
+<span style="display: inline-block; width: 6px; height: 6px; background: #4a6cf7; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin: 0 6px;"></span>
+</section>
+
+<!-- 第一部分标题 -->
+<section style="margin: 0 16px 20px;">
+<section style="display: flex; align-items: center; margin-bottom: 8px;">
+<span style="display: inline-block; background: #d97706; color: #fff; font-size: 12px; font-weight: bold; padding: 2px 10px; border-radius: 4px; margin-right: 10px; letter-spacing: 1px;">PART 01</span>
+</section>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a2e; margin: 5px 0 5px; line-height: 1.5;">Claude Opus 4.6</h2>
+<p style="font-size: 14px; color: #888; margin: 0;">从「写代码」到「做一切知识工作」</p>
+</section>
+
+<section style="margin: 0 16px 20px;">
+<p style="font-size: 15px; color: #444; margin-bottom: 15px;">Anthropic 这次发布的 Claude Opus 4.6，距离上一代 Opus 4.5 仅隔三个月，但升级幅度惊人。</p>
+</section>
+
+<!-- 亮点 1: 百万上下文 -->
+<section style="margin: 0 16px 22px; padding: 18px; background: #fafbff; border-radius: 8px; border: 1px solid #e8ecf5;">
+<h3 style="font-size: 16px; color: #4a6cf7; margin: 0 0 10px; font-weight: bold;">&#x1f4d6; 百万级上下文窗口</h3>
+<p style="font-size: 14px; color: #555; margin: 0 0 10px;">上下文窗口从 20 万 tokens 扩展至 <strong style="color: #e74c3c; font-size: 16px;">100 万 tokens</strong>（约 75 万字），且在超长上下文下不会出现性能退化。输出上限提升至 <strong>12.8 万 tokens</strong>，可一次性生成完整长文档。</p>
+<p style="font-size: 13px; color: #888; margin: 0; background: #f3f4f6; padding: 8px 12px; border-radius: 4px;">&#x1f4b0; 定价：常规 $5/$25 每百万 tokens 不变，超 20 万 tokens 的长上下文溢价 $10/$37.50</p>
+</section>
+
+<!-- 亮点 2: 自适应思考 -->
+<section style="margin: 0 16px 22px; padding: 18px; background: #fafbff; border-radius: 8px; border: 1px solid #e8ecf5;">
+<h3 style="font-size: 16px; color: #4a6cf7; margin: 0 0 10px; font-weight: bold;">&#x1f9e0; 自适应思考 Adaptive Thinking</h3>
+<p style="font-size: 14px; color: #555; margin: 0;">告别手动调参。模型根据问题复杂度<strong>自动决定推理深度</strong>，提供低、中、高、最大四个档位。简单问题秒回，复杂问题深入推理。</p>
+</section>
+
+<!-- 亮点 3: Agent Teams -->
+<section style="margin: 0 16px 22px; padding: 18px; background: #fafbff; border-radius: 8px; border: 1px solid #e8ecf5;">
+<h3 style="font-size: 16px; color: #4a6cf7; margin: 0 0 10px; font-weight: bold;">&#x1f91d; Agent Teams 智能体团队</h3>
+<p style="font-size: 14px; color: #555; margin: 0;">在 Claude Code 中，开发者可创建<strong>多个 AI 智能体并行协作</strong>——多个 Agent 同时处理项目的不同模块，不再是单线程工作。</p>
+</section>
+
+<!-- 亮点 4: 零日漏洞 - 重点突出 -->
+<section style="margin: 0 16px 22px; padding: 20px; background: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%); border-radius: 8px; border: 1px solid #fecaca;">
+<h3 style="font-size: 16px; color: #dc2626; margin: 0 0 12px; font-weight: bold;">&#x1f6a8; 发现 500+ 零日漏洞（最大亮点）</h3>
+<p style="font-size: 14px; color: #555; margin: 0 0 12px;">Anthropic 前沿红队在沙箱中测试时，Opus 4.6 仅凭「开箱即用」能力，<strong style="color: #dc2626;">发现了超过 500 个此前未知的零日安全漏洞</strong>，涵盖 GhostScript、OpenSC、CGIF 等广泛使用的开源项目。</p>
+<p style="font-size: 14px; color: #555; margin: 0 0 12px;">这些漏洞中不乏存在了<strong>数十年</strong>而未被发现的高危漏洞。在 CGIF 案例中，Claude 甚至主动编写了概念验证代码来证实漏洞真实性。</p>
+<p style="font-size: 13px; color: #b91c1c; margin: 0; padding: 10px 12px; background: #fff5f5; border-radius: 4px; border-left: 3px solid #dc2626;">Anthropic 警告：当 AI 发现漏洞的速度超过人类安全研究员时，行业标准的 90 天漏洞披露窗口可能需要重新审视。</p>
+</section>
+
+<!-- 基准测试表格 -->
+<section style="margin: 0 16px 22px;">
+<h3 style="font-size: 16px; color: #4a6cf7; margin: 0 0 12px; font-weight: bold;">&#x1f4ca; 基准测试全面领先</h3>
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; border-radius: 8px; overflow: hidden;">
+<thead>
+<tr style="background: #4a6cf7; color: #fff;">
+<th style="padding: 10px 12px; text-align: left; font-weight: 600;">基准测试</th>
+<th style="padding: 10px 12px; text-align: center; font-weight: 600;">得分</th>
+<th style="padding: 10px 12px; text-align: left; font-weight: 600;">对比</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">GDPval-AA 知识工作</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #4a6cf7;">1,606 Elo</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #dc2626;">超 GPT-5.2 <strong>144 分</strong></td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">ARC-AGI 2 新问题求解</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #4a6cf7;">68.8%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">超 GPT-5.2 Pro 的 54.2%</td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Terminal-Bench 2.0 编码</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #4a6cf7;">65.4%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">最高 agentic 编码分</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Humanity's Last Exam</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #4a6cf7;">53.1%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">所有前沿模型最高</td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 12px;">BigLaw Bench 法律推理</td>
+<td style="padding: 10px 12px; text-align: center; font-weight: bold; color: #4a6cf7;">90.2%</td>
+<td style="padding: 10px 12px;">—</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<!-- Vibe Working -->
+<section style="margin: 0 16px 25px; padding: 18px; background: #fafbff; border-radius: 8px; border: 1px solid #e8ecf5;">
+<h3 style="font-size: 16px; color: #4a6cf7; margin: 0 0 10px; font-weight: bold;">&#x1f4a1; 新概念：Vibe Working</h3>
+<p style="font-size: 14px; color: #555; margin: 0 0 10px;">Anthropic 企业产品负责人 Scott White：</p>
+<p style="font-size: 14px; color: #666; margin: 0; padding: 12px 16px; background: #f0f4ff; border-radius: 6px; border-left: 3px solid #4a6cf7; font-style: italic;">「过去一年半，软件工程领域经历了 Vibe Coding 的变革。现在，我们正过渡到 Vibe Working 时代。」</p>
+<p style="font-size: 14px; color: #555; margin: 10px 0 0;">Opus 4.6 全面升级了 Excel 集成，并推出 PowerPoint 集成研究预览——能感知设计系统，保留现有布局、字体和母版设置。</p>
+</section>
+
+<!-- 分隔线 -->
+<section style="text-align: center; margin: 30px 16px;">
+<span style="display: inline-block; width: 6px; height: 6px; background: #4a6cf7; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin: 0 6px;"></span>
+</section>
+
+<!-- 第二部分标题 -->
+<section style="margin: 0 16px 20px;">
+<section style="display: flex; align-items: center; margin-bottom: 8px;">
+<span style="display: inline-block; background: #10b981; color: #fff; font-size: 12px; font-weight: bold; padding: 2px 10px; border-radius: 4px; margin-right: 10px; letter-spacing: 1px;">PART 02</span>
+</section>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a2e; margin: 5px 0 5px; line-height: 1.5;">GPT-5.3-Codex</h2>
+<p style="font-size: 14px; color: #888; margin: 0;">「第一个参与创造自身的 AI 模型」</p>
+</section>
+
+<section style="margin: 0 16px 20px;">
+<p style="font-size: 15px; color: #444; margin-bottom: 15px;">OpenAI 的回应同样重磅。GPT-5.3-Codex 被定位为「迄今最强的 agentic 编码模型」，独特卖点——<strong style="color: #10b981;">它是 OpenAI 第一个在自身训练和部署调试中发挥关键作用的模型</strong>，堪称「第一个自我开发的 AI 模型」。</p>
+</section>
+
+<!-- 三个核心特性 -->
+<section style="margin: 0 16px 22px;">
+<section style="display: flex; margin-bottom: 10px;">
+<section style="flex: 1; padding: 14px; background: #f0fdf4; border-radius: 8px; text-align: center; margin-right: 8px;">
+<p style="font-size: 22px; font-weight: bold; color: #10b981; margin: 0 0 4px;">40万</p>
+<p style="font-size: 12px; color: #666; margin: 0;">上下文 tokens</p>
+</section>
+<section style="flex: 1; padding: 14px; background: #f0fdf4; border-radius: 8px; text-align: center; margin-right: 8px;">
+<p style="font-size: 22px; font-weight: bold; color: #10b981; margin: 0 0 4px;">12.8万</p>
+<p style="font-size: 12px; color: #666; margin: 0;">输出 tokens</p>
+</section>
+<section style="flex: 1; padding: 14px; background: #f0fdf4; border-radius: 8px; text-align: center;">
+<p style="font-size: 22px; font-weight: bold; color: #10b981; margin: 0 0 4px;">+25%</p>
+<p style="font-size: 12px; color: #666; margin: 0;">速度提升</p>
+</section>
+</section>
+</section>
+
+<section style="margin: 0 16px 22px; padding: 18px; background: #f0fdf4; border-radius: 8px; border: 1px solid #d1fae5;">
+<h3 style="font-size: 16px; color: #059669; margin: 0 0 10px; font-weight: bold;">&#x1f527; 覆盖软件全生命周期</h3>
+<p style="font-size: 14px; color: #555; margin: 0 0 8px;">调试、部署、监控、编写 PRD、用户研究、测试、指标分析——不止于写代码。</p>
+<p style="font-size: 14px; color: #555; margin: 0;">执行长时间复杂任务时，开发者可以<strong>像与同事协作一样随时介入、调整方向</strong>。</p>
+</section>
+
+<!-- GPT-5.3 基准测试 -->
+<section style="margin: 0 16px 22px;">
+<h3 style="font-size: 16px; color: #059669; margin: 0 0 12px; font-weight: bold;">&#x1f4ca; 基准表现</h3>
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; border-radius: 8px; overflow: hidden;">
+<thead>
+<tr style="background: #10b981; color: #fff;">
+<th style="padding: 10px 12px; text-align: left; font-weight: 600;">基准测试</th>
+<th style="padding: 10px 12px; text-align: center; font-weight: 600;">得分</th>
+<th style="padding: 10px 12px; text-align: left; font-weight: 600;">对比</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">Terminal-Bench 2.0</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #dc2626;">77.3%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #dc2626;">超 Opus 4.6 的 65.4%</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">SWE-Bench Pro</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #059669;">56.8%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">新行业最高</td>
+</tr>
+<tr style="background: #f8fafc;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">OSWorld-Verified</td>
+<td style="padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #059669;">64.7%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0;">接近人类基线 72%</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px;">GDPval</td>
+<td style="padding: 10px 12px; text-align: center; font-weight: bold; color: #059669;">70.9%</td>
+<td style="padding: 10px 12px;">44 个职业类别</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<!-- 客观对比 -->
+<section style="margin: 0 16px 22px; padding: 16px; background: #fffbeb; border-radius: 8px; border: 1px solid #fde68a;">
+<p style="font-size: 14px; color: #92400e; margin: 0; font-weight: bold;">&#x2696;&#xfe0f; 客观对比：在编码基准（Terminal-Bench）上，GPT-5.3-Codex 以 77.3% 大幅领先 Opus 4.6 的 65.4%；但 Opus 4.6 在知识工作（GDPval-AA）和新问题求解（ARC-AGI 2）上更占优势。两家各有所长，并非单方面碾压。</p>
+</section>
+
+<!-- 安全举措 -->
+<section style="margin: 0 16px 25px; padding: 18px; background: #f0fdf4; border-radius: 8px; border: 1px solid #d1fae5;">
+<h3 style="font-size: 16px; color: #059669; margin: 0 0 10px; font-weight: bold;">&#x1f6e1;&#xfe0f; 安全举措</h3>
+<p style="font-size: 14px; color: #555; margin: 0 0 8px;">OpenAI 首次在网络安全领域按<strong>「高能力」级别</strong>处理发布，同步推出：</p>
+<p style="font-size: 14px; color: #555; margin: 0 0 4px;">&#x2022; Trusted Access for Cyber 试点项目</p>
+<p style="font-size: 14px; color: #555; margin: 0 0 4px;">&#x2022; Aardvark 安全研究 Agent 扩大测试</p>
+<p style="font-size: 14px; color: #555; margin: 0 0 4px;">&#x2022; 为主要开源项目提供免费漏洞扫描</p>
+<p style="font-size: 14px; color: #555; margin: 0;">&#x2022; <strong>1000 万美元</strong> API 信用额度用于网络安全防御</p>
+</section>
+
+<!-- 分隔线 -->
+<section style="text-align: center; margin: 30px 16px;">
+<span style="display: inline-block; width: 6px; height: 6px; background: #4a6cf7; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin: 0 6px;"></span>
+</section>
+
+<!-- 第三部分标题 -->
+<section style="margin: 0 16px 20px;">
+<section style="display: flex; align-items: center; margin-bottom: 8px;">
+<span style="display: inline-block; background: #8b5cf6; color: #fff; font-size: 12px; font-weight: bold; padding: 2px 10px; border-radius: 4px; margin-right: 10px; letter-spacing: 1px;">PART 03</span>
+</section>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a2e; margin: 5px 0 5px; line-height: 1.5;">OpenAI Frontier</h2>
+<p style="font-size: 14px; color: #888; margin: 0;">要做企业的「AI 操作系统」</p>
+</section>
+
+<section style="margin: 0 16px 20px;">
+<p style="font-size: 15px; color: #444;">同日发布的还有 OpenAI 的企业级平台 Frontier——像管理员工一样管理 AI Agent：入职流程、身份权限、绩效反馈，让 Agent 成为真正的「数字员工」。</p>
+</section>
+
+<!-- Frontier 四大能力 -->
+<section style="margin: 0 16px 12px; padding: 14px 16px; background: #faf5ff; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+<p style="font-size: 14px; color: #555; margin: 0;"><strong style="color: #7c3aed;">打通数据孤岛</strong> — 连接企业内部应用、工单系统、数据仓库，为 Agent 提供共享业务上下文</p>
+</section>
+<section style="margin: 0 16px 12px; padding: 14px 16px; background: #faf5ff; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+<p style="font-size: 14px; color: #555; margin: 0;"><strong style="color: #7c3aed;">开放平台</strong> — 兼容 OpenAI、Google、Microsoft、Anthropic 等多方构建的 Agent</p>
+</section>
+<section style="margin: 0 16px 12px; padding: 14px 16px; background: #faf5ff; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+<p style="font-size: 14px; color: #555; margin: 0;"><strong style="color: #7c3aed;">灵活部署</strong> — Agent 可在本地、你的云或 OpenAI 托管环境中运行</p>
+</section>
+<section style="margin: 0 16px 22px; padding: 14px 16px; background: #faf5ff; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+<p style="font-size: 14px; color: #555; margin: 0;"><strong style="color: #7c3aed;">内置治理</strong> — 每个 Agent 有明确的身份、权限和安全护栏</p>
+</section>
+
+<!-- 客户成果 -->
+<section style="margin: 0 16px 25px;">
+<h3 style="font-size: 16px; color: #7c3aed; margin: 0 0 12px; font-weight: bold;">&#x1f3af; 首批客户成果</h3>
+<section style="display: flex; margin-bottom: 10px;">
+<section style="flex: 1; padding: 16px 12px; background: #f5f3ff; border-radius: 8px; text-align: center; margin-right: 8px;">
+<p style="font-size: 24px; font-weight: bold; color: #7c3aed; margin: 0 0 6px;">6周 &#x2192; 1天</p>
+<p style="font-size: 12px; color: #666; margin: 0;">某制造商<br/>生产优化周期</p>
+</section>
+<section style="flex: 1; padding: 16px 12px; background: #f5f3ff; border-radius: 8px; text-align: center; margin-right: 8px;">
+<p style="font-size: 24px; font-weight: bold; color: #7c3aed; margin: 0 0 6px;">90%+</p>
+<p style="font-size: 12px; color: #666; margin: 0;">某投资公司<br/>销售时间释放</p>
+</section>
+<section style="flex: 1; padding: 16px 12px; background: #f5f3ff; border-radius: 8px; text-align: center;">
+<p style="font-size: 24px; font-weight: bold; color: #7c3aed; margin: 0 0 6px;">1,500h</p>
+<p style="font-size: 12px; color: #666; margin: 0;">某科技公司<br/>月节省工时</p>
+</section>
+</section>
+<p style="font-size: 13px; color: #888; margin: 5px 0 0;">首批用户：Uber、State Farm、Intuit、Thermo Fisher Scientific 等</p>
+</section>
+
+<!-- 分隔线 -->
+<section style="text-align: center; margin: 30px 16px;">
+<span style="display: inline-block; width: 6px; height: 6px; background: #4a6cf7; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; margin: 0 6px;"></span>
+<span style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin: 0 6px;"></span>
+</section>
+
+<!-- 第四部分：趋势 -->
+<section style="margin: 0 16px 20px;">
+<section style="display: flex; align-items: center; margin-bottom: 8px;">
+<span style="display: inline-block; background: #e74c3c; color: #fff; font-size: 12px; font-weight: bold; padding: 2px 10px; border-radius: 4px; margin-right: 10px; letter-spacing: 1px;">PART 04</span>
+</section>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a2e; margin: 5px 0 15px; line-height: 1.5;">一天之内，行业格局悄然改变</h2>
+</section>
+
+<section style="margin: 0 16px 15px; padding: 16px; background: #fef2f2; border-radius: 8px;">
+<p style="font-size: 14px; color: #444; margin: 0;"><strong style="color: #dc2626;">趋势一：AI 编程「卷」出新高度</strong><br/>两家顶尖公司同日发布编码模型，Terminal-Bench、SWE-Bench 分数持续攀升，AI 编程能力正在加速逼近甚至超越人类基线。</p>
+</section>
+
+<section style="margin: 0 16px 15px; padding: 16px; background: #eff6ff; border-radius: 8px;">
+<p style="font-size: 14px; color: #444; margin: 0;"><strong style="color: #2563eb;">趋势二：从「写代码」到「做工作」</strong><br/>无论是 Anthropic 的 Vibe Working 还是 OpenAI 的「全生命周期」——AI 不再只是程序员的工具，它正在成为所有知识工作者的协作伙伴。</p>
+</section>
+
+<section style="margin: 0 16px 15px; padding: 16px; background: #fff7ed; border-radius: 8px;">
+<p style="font-size: 14px; color: #444; margin: 0;"><strong style="color: #ea580c;">趋势三：AI 安全能力成为新战场</strong><br/>Opus 4.6 发现 500+ 零日漏洞，GPT-5.3-Codex 首次按「高网络安全能力」级别发布。AI 在安全领域的能力快速增长，既是机遇也是挑战。</p>
+</section>
+
+<section style="margin: 0 16px 25px; padding: 16px; background: #f5f3ff; border-radius: 8px;">
+<p style="font-size: 14px; color: #444; margin: 0;"><strong style="color: #7c3aed;">趋势四：企业 AI Agent 平台之争开启</strong><br/>OpenAI Frontier 标志着 AI 公司从「卖模型」到「卖平台」的转变。未来竞争不仅在模型能力上，更在谁能成为企业 AI 基础设施的标准。</p>
+</section>
+
+<!-- 来源 -->
+<section style="margin: 0 16px 30px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+<p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px; font-weight: bold;">参考来源</p>
+<p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px;">Anthropic 官方公告 anthropic.com</p>
+<p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px;">OpenAI GPT-5.3-Codex 发布 openai.com</p>
+<p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px;">OpenAI Frontier 平台 openai.com</p>
+<p style="font-size: 12px; color: #9ca3af; margin: 0 0 4px;">TechCrunch / VentureBeat / Fortune / The New Stack</p>
+</section>
+
+</section>

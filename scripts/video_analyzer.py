@@ -357,33 +357,28 @@ def build_analysis_prompt(transcript, metadata):
     return prompt
 
 
-def call_claude_for_analysis(prompt):
+def call_llm_for_analysis(prompt, config=None):
     """
-    调用 Claude CLI 生成深度分析文章。
-    超时 900 秒（15 分钟）。
+    调用 LLM 生成深度分析文章。
+    支持 Claude / DeepSeek / OpenAI 后端切换。
     """
-    print("      正在调用 Claude 生成深度分析...")
+    if config is None:
+        config = {}
+
+    from llm_adapter import generate, LLMError
+
+    provider = config.get("LLM_PROVIDER", "claude").lower()
+    print(f"      正在调用 AI 生成深度分析（提供商: {provider}）...")
     print("      (这一步需要较长时间，请耐心等待)")
 
     try:
-        result = subprocess.run(
-            ["claude", "-p", prompt, "--allowedTools", "WebSearch,WebFetch"],
-            capture_output=True,
-            text=True,
-            timeout=900,
-            cwd=str(PROJECT_ROOT),
-        )
-    except subprocess.TimeoutExpired:
-        print("[错误] Claude CLI 执行超时（15分钟），请重试")
-        return None
-    except FileNotFoundError:
-        print("[错误] 未找到 claude 命令，请确认 Claude Code CLI 已安装")
-        return None
-
-    output = result.stdout.strip()
-
-    if result.returncode != 0 or not output:
-        print(f"[错误] Claude 返回异常:\n{result.stderr}")
+        if provider == "claude":
+            output = generate(prompt, config, timeout=900, need_search=True)
+        else:
+            # 非 Claude 后端：转录文本已在 prompt 中，信息量足够，可跳过搜索
+            output = generate(prompt, config, timeout=900, need_search=False)
+    except LLMError as e:
+        print(f"[错误] {e}")
         return None
 
     return output
@@ -447,7 +442,7 @@ def analyze_video(youtube_url, config=None):
     print("[1/4] 构建分析 prompt...")
     prompt = build_analysis_prompt(transcript, metadata)
 
-    output = call_claude_for_analysis(prompt)
+    output = call_llm_for_analysis(prompt, config)
     if not output:
         return None, None
 

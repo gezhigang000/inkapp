@@ -210,53 +210,53 @@ def make_timestamp():
 # ============================================================
 
 
-def generate_article(topic=None):
-    """调用 Claude Code CLI 生成文章。topic 指定时走深度调研，否则走日报模式。"""
+def generate_article(topic=None, config=None):
+    """调用 LLM 生成文章。topic 指定时走深度调研，否则走日报模式。"""
+    if config is None:
+        config = {}
     today = datetime.now().strftime("%Y-%m-%d")
 
     if topic:
-        return _generate_topic_research(topic, today)
+        return _generate_topic_research(topic, today, config)
     else:
-        return _generate_daily_news(today)
+        return _generate_daily_news(today, config)
 
 
-def _generate_topic_research(topic, today):
+def _generate_topic_research(topic, today, config):
     """深度调研模式：围绕指定 topic 搜索官方资料做深度分析"""
+    from llm_adapter import generate, LLMError
+    from search_adapter import search_and_fetch
+
     with open(TOPIC_PROMPT_FILE, "r", encoding="utf-8") as f:
         prompt_template = f.read()
 
     prompt = f"今天是 {today}。\n\n" + prompt_template.replace("{{TOPIC}}", topic)
 
-    print(f"[1/4] 正在调用 Claude 深度调研「{topic}」...")
-    print("      模式: 深度调研（搜索官方文档和英文资料）")
+    provider = config.get("LLM_PROVIDER", "claude").lower()
+    print(f"[1/4] 正在调用 AI 深度调研「{topic}」...")
+    print(f"      模式: 深度调研（搜索官方文档和英文资料）")
+    print(f"      提供商: {provider}")
     print("      (这一步需要联网搜索，请耐心等待)")
 
     try:
-        result = subprocess.run(
-            ["claude", "-p", prompt, "--allowedTools", "WebSearch,WebFetch"],
-            capture_output=True,
-            text=True,
-            timeout=1200,
-            cwd=str(PROJECT_ROOT),
-        )
-    except subprocess.TimeoutExpired:
-        print("[错误] Claude CLI 执行超时（20分钟），请重试")
-        sys.exit(1)
-    except FileNotFoundError:
-        print("[错误] 未找到 claude 命令，请确认 Claude Code CLI 已安装")
-        sys.exit(1)
-
-    output = result.stdout.strip()
-
-    if result.returncode != 0 or not output:
-        print(f"[错误] Claude 返回异常:\n{result.stderr}")
+        if provider == "claude":
+            output = generate(prompt, config, timeout=1200, need_search=True)
+        else:
+            context = search_and_fetch(
+                [f"{topic} 最新进展 2026", f"{topic} official announcement"],
+                config,
+            )
+            full_prompt = f"以下是搜索到的最新资料：\n\n{context}\n\n---\n\n{prompt}"
+            output = generate(full_prompt, config, timeout=600)
+    except LLMError as e:
+        print(f"[错误] {e}")
         sys.exit(1)
 
     html_content = extract_html(output)
     if not html_content:
-        # 检测 Claude 是否返回了总结描述而非实际文章
+        # 检测是否返回了总结描述而非实际文章
         if "文章已完成" in output or "整篇文章围绕" in output or "<section" not in output:
-            print("[错误] Claude 返回了文章描述/总结而非实际 HTML 文章内容")
+            print("[错误] AI 返回了文章描述/总结而非实际 HTML 文章内容")
             print("       输出前 200 字:", output[:200])
             print("       请重新运行脚本重试")
             sys.exit(1)
@@ -266,8 +266,11 @@ def _generate_topic_research(topic, today):
     return html_content
 
 
-def _generate_daily_news(today):
+def _generate_daily_news(today, config):
     """日报模式：搜索多家公司最新动态生成日报"""
+    from llm_adapter import generate, LLMError
+    from search_adapter import search_and_fetch
+
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
         prompt_template = f.read()
 
@@ -297,32 +300,30 @@ def _generate_daily_news(today):
 
     prompt = "\n".join(variation_parts) + "\n" + prompt_template
 
+    provider = config.get("LLM_PROVIDER", "claude").lower()
     topic_label = f"（方向: {effective_topic}）" if effective_topic else ""
-    print(f"[1/4] 正在调用 Claude 生成 {today} AI 日报{topic_label}...")
+    print(f"[1/4] 正在调用 AI 生成 {today} AI 日报{topic_label}...")
     print(f"      关注公司: {companies_str}")
     print(f"      写作视角: {variation['angle'][:30]}...")
     print(f"      文章体裁: {variation['structure'][:20]}...")
+    print(f"      提供商: {provider}")
     print("      (这一步需要联网搜索，请耐心等待)")
 
     try:
-        result = subprocess.run(
-            ["claude", "-p", prompt, "--allowedTools", "WebSearch,WebFetch"],
-            capture_output=True,
-            text=True,
-            timeout=600,
-            cwd=str(PROJECT_ROOT),
-        )
-    except subprocess.TimeoutExpired:
-        print("[错误] Claude CLI 执行超时（10分钟），请重试")
-        sys.exit(1)
-    except FileNotFoundError:
-        print("[错误] 未找到 claude 命令，请确认 Claude Code CLI 已安装")
-        sys.exit(1)
-
-    output = result.stdout.strip()
-
-    if result.returncode != 0 or not output:
-        print(f"[错误] Claude 返回异常:\n{result.stderr}")
+        if provider == "claude":
+            output = generate(prompt, config, timeout=600, need_search=True)
+        else:
+            # 构造搜索查询：用公司名和话题
+            queries = []
+            for company in companies[:3]:
+                queries.append(f"{company} AI latest news 2026")
+            if effective_topic:
+                queries.append(f"{effective_topic} 最新进展 2026")
+            context = search_and_fetch(queries, config)
+            full_prompt = f"以下是搜索到的最新资料：\n\n{context}\n\n---\n\n{prompt}"
+            output = generate(full_prompt, config, timeout=600)
+    except LLMError as e:
+        print(f"[错误] {e}")
         sys.exit(1)
 
     html_content = extract_html(output)
@@ -1401,7 +1402,7 @@ def main():
     variation = pick_daily_variation(today)
 
     # 第一步：生成文章
-    html_content = generate_article(topic)
+    html_content = generate_article(topic, config)
 
     # 处理文章配图
     print("      处理文章配图...")

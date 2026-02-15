@@ -18,7 +18,8 @@ import tempfile
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-VIDEO_PROMPT_FILE = SCRIPT_DIR / "video_prompt_template.txt"
+PROJECT_ROOT = SCRIPT_DIR.parent
+VIDEO_PROMPT_FILE = PROJECT_ROOT / "prompts" / "video_prompt_template.txt"
 
 
 def extract_video_id(url):
@@ -370,7 +371,7 @@ def call_claude_for_analysis(prompt):
             capture_output=True,
             text=True,
             timeout=900,
-            cwd=str(SCRIPT_DIR),
+            cwd=str(PROJECT_ROOT),
         )
     except subprocess.TimeoutExpired:
         print("[错误] Claude CLI 执行超时（15分钟），请重试")

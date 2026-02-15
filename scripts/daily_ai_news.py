@@ -23,16 +23,18 @@ from datetime import datetime
 from pathlib import Path
 
 # Pillow 可能装在项目本地目录
-SCRIPT_DIR = Path(__file__).parent
-PYLIB_DIR = SCRIPT_DIR / "pylib"
+SCRIPT_DIR = Path(__file__).parent           # scripts/
+PROJECT_ROOT = SCRIPT_DIR.parent             # 项目根目录
+
+PYLIB_DIR = PROJECT_ROOT / "pylib"
 if PYLIB_DIR.exists():
     sys.path.insert(0, str(PYLIB_DIR))
 
-CONFIG_FILE = SCRIPT_DIR / "config.env"
-PROMPT_FILE = SCRIPT_DIR / "prompt_template.txt"
-TOPIC_PROMPT_FILE = SCRIPT_DIR / "topic_prompt_template.txt"
-QRCODE_IMAGE = SCRIPT_DIR / "扫码_搜索联合传播样式-白色版-compressed.jpg"
-QRCODE_URL_CACHE = SCRIPT_DIR / ".qrcode_url.cache"
+CONFIG_FILE = PROJECT_ROOT / "config.env"
+PROMPT_FILE = PROJECT_ROOT / "prompts" / "prompt_template.txt"
+TOPIC_PROMPT_FILE = PROJECT_ROOT / "prompts" / "topic_prompt_template.txt"
+QRCODE_IMAGE = PROJECT_ROOT / "assets" / "扫码_搜索联合传播样式-白色版-compressed.jpg"
+QRCODE_URL_CACHE = PROJECT_ROOT / ".qrcode_url.cache"
 
 
 # ============================================================
@@ -93,16 +95,19 @@ STRUCTURE_POOL = [
     "实操体：聚焦可以立刻上手试用的更新，给出具体使用建议和踩坑提醒",
 ]
 
-# 封面图配色方案池（护眼深色 + 浅灰色，参考 2.png 风格）
+# 封面图配色方案池（以深色为主，护眼舒适）
 COVER_THEMES = [
-    {"bg": "#e5e5e5", "accent": "#555555", "text": "#1a1a1a"},   # 浅灰（接近参考图）
-    {"bg": "#d6dce4", "accent": "#4a5568", "text": "#1a202c"},   # 蓝灰
-    {"bg": "#2d3748", "accent": "#8fa3bf", "text": "#e2e8f0"},   # 深蓝灰
-    {"bg": "#1e293b", "accent": "#64748b", "text": "#f1f5f9"},   # 深靛
-    {"bg": "#292524", "accent": "#a8967a", "text": "#f5f0eb"},   # 深棕
-    {"bg": "#d5cfc7", "accent": "#6b6358", "text": "#292524"},   # 暖灰
     {"bg": "#1f2937", "accent": "#6b8aad", "text": "#e5e7eb"},   # 暗钢蓝
-    {"bg": "#e0ddd5", "accent": "#5a5550", "text": "#1c1917"},   # 米灰
+    {"bg": "#1e293b", "accent": "#64748b", "text": "#f1f5f9"},   # 深靛
+    {"bg": "#2d3748", "accent": "#8fa3bf", "text": "#e2e8f0"},   # 深蓝灰
+    {"bg": "#292524", "accent": "#a8967a", "text": "#f5f0eb"},   # 深棕
+    {"bg": "#1a2332", "accent": "#7b9eb8", "text": "#dce6f0"},   # 深海蓝
+    {"bg": "#232b3e", "accent": "#8893a8", "text": "#e8ecf1"},   # 暗靛蓝
+    {"bg": "#2a2f38", "accent": "#9ca3af", "text": "#f3f4f6"},   # 深石墨
+    {"bg": "#1c2a35", "accent": "#6d95b0", "text": "#e0eaf2"},   # 深雾蓝
+    {"bg": "#2b2d3a", "accent": "#8b8fad", "text": "#e6e7f0"},   # 暗薰衣草
+    {"bg": "#e5e5e5", "accent": "#555555", "text": "#1a1a1a"},   # 浅灰（经典）
+    {"bg": "#d6dce4", "accent": "#4a5568", "text": "#1a202c"},   # 蓝灰（浅色）
 ]
 
 
@@ -232,7 +237,7 @@ def _generate_topic_research(topic, today):
             capture_output=True,
             text=True,
             timeout=1200,
-            cwd=str(SCRIPT_DIR),
+            cwd=str(PROJECT_ROOT),
         )
     except subprocess.TimeoutExpired:
         print("[错误] Claude CLI 执行超时（20分钟），请重试")
@@ -305,7 +310,7 @@ def _generate_daily_news(today):
             capture_output=True,
             text=True,
             timeout=600,
-            cwd=str(SCRIPT_DIR),
+            cwd=str(PROJECT_ROOT),
         )
     except subprocess.TimeoutExpired:
         print("[错误] Claude CLI 执行超时（10分钟），请重试")
@@ -523,7 +528,7 @@ def split_article_if_needed(html_content, title):
         return [(title, html_content)]
 
     total_parts = len(groups)
-    base_title = title or "AI 前沿日报"
+    base_title = title or "质取report"
     print(f"      [拆分] 文章过长（{len(html_content)} 字符），自动拆分为 {total_parts} 篇系列文章")
 
     result = []
@@ -1245,8 +1250,8 @@ def run_video_analysis(video_url, config, args):
     from video_analyzer import analyze_video
     from image_processor import process_images_in_html
 
-    output_dir = config.get("OUTPUT_DIR", str(SCRIPT_DIR / "articles"))
-    author = config.get("AUTHOR", "AI前沿日报")
+    output_dir = config.get("OUTPUT_DIR", str(PROJECT_ROOT / "output" / "articles"))
+    author = config.get("AUTHOR", "质取report")
     publish_mode = "publish" if args["publish"] else config.get("PUBLISH_MODE", "draft")
     timestamp = make_timestamp()
 
@@ -1385,8 +1390,8 @@ def main():
 
     from image_processor import process_images_in_html
 
-    output_dir = config.get("OUTPUT_DIR", str(SCRIPT_DIR / "articles"))
-    author = config.get("AUTHOR", "AI前沿日报")
+    output_dir = config.get("OUTPUT_DIR", str(PROJECT_ROOT / "output" / "articles"))
+    author = config.get("AUTHOR", "质取report")
     publish_mode = "publish" if args["publish"] else config.get("PUBLISH_MODE", "draft")
     topic = args["topic"]
     timestamp = make_timestamp()
@@ -1417,7 +1422,7 @@ def main():
     # 提取标题（拆分前提取，因为拆分后 header 可能被简化）
     title = extract_title(html_content)
     if not title:
-        title = "AI 前沿日报"
+        title = "质取report"
 
     # 自动拆分：如果内容过长，按 PART 边界拆为系列文章
     articles = split_article_if_needed(html_content, title)

@@ -7,7 +7,7 @@ __pycache__/
 pylib/
 
 # 生成产物（每次运行动态生成）
-articles/
+output/
 logs/
 
 # 资源文件（PDF 体积大）

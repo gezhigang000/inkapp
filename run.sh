@@ -14,7 +14,7 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-export PYTHONPATH="$SCRIPT_DIR/pylib:$PYTHONPATH"
+export PYTHONPATH="$SCRIPT_DIR/scripts:$SCRIPT_DIR/pylib:$PYTHONPATH"
 
 # 解析 --mode 参数，剩余参数透传给 Python 脚本
 MODE="single"
@@ -38,16 +38,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "========================================"
-echo "  AI 前沿日报 - $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  质取report - $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 echo ""
 
 case "$MODE" in
     single)
-        python3 "$SCRIPT_DIR/daily_ai_news.py" "${PASS_ARGS[@]}"
+        python3 "$SCRIPT_DIR/scripts/daily_ai_news.py" "${PASS_ARGS[@]}"
         ;;
     batch)
-        python3 "$SCRIPT_DIR/batch_generate.py" "${PASS_ARGS[@]}"
+        python3 "$SCRIPT_DIR/scripts/batch_generate.py" "${PASS_ARGS[@]}"
         ;;
     *)
         echo "[错误] 未知模式: $MODE"

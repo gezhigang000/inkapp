@@ -4,7 +4,7 @@
 
 ## 功能概览
 
-- **文章生成**：调用 Claude CLI 联网搜索并撰写深度 AI 文章（HTML 格式，适配微信排版）
+- **文章生成**：调用大模型联网搜索并撰写深度 AI 文章（HTML 格式，适配微信排版），支持 Claude / DeepSeek / OpenAI 切换
 - **封面图生成**：Pillow 自动生成科技感封面图（深色主题 + 几何背景图案）
 - **自动拆分**：长文章自动按 PART 边界拆分为系列文章
 - **双平台推送**：同时推送到 Ink 平台和微信公众号草稿箱
@@ -15,9 +15,11 @@
 ## 环境要求
 
 - Python 3.8+
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) 已安装且可用
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) 已安装且可用（默认模型后端）
 - Pillow（封面图生成）
 - requests（API 调用）
+
+> 如切换到 DeepSeek / OpenAI 后端，则不需要安装 Claude Code CLI，但需要对应的 API Key。
 
 ```bash
 # 安装 Python 依赖（如已有 pylib 目录则自动加载）
@@ -52,6 +54,31 @@ INK_API_KEY=你的ink_api_key
 # AI 图片生成 API Key（可选，用于文章配图兜底）
 OPENAI_API_KEY=
 ```
+
+### 切换大模型（可选）
+
+默认使用 Claude CLI，无需额外配置。如需切换到其他模型，在 `config.env` 中添加：
+
+```ini
+# ---- 切换到 DeepSeek ----
+LLM_PROVIDER=deepseek
+DEEPSEEK_API_KEY=sk-xxx
+DEEPSEEK_MODEL=deepseek-chat          # 可选，默认 deepseek-chat
+
+# ---- 或切换到 OpenAI ----
+LLM_PROVIDER=openai
+OPENAI_MODEL=gpt-4o                   # 可选，默认 gpt-4o
+# OPENAI_API_KEY= 填入上面已有的那行即可
+
+# ---- 搜索配置（非 Claude 模式必填）----
+# 非 Claude 模型没有内置搜索能力，需要配置独立搜索服务
+SEARCH_PROVIDER=tavily                # tavily (推荐) / serpapi
+TAVILY_API_KEY=tvly-xxx               # https://tavily.com 免费 1000 次/月
+# 或
+SERPAPI_API_KEY=xxx                   # https://serpapi.com
+```
+
+改回 `LLM_PROVIDER=claude` 或删掉该行即可恢复默认。命令行用法不变。
 
 ### 2. 运行
 
@@ -104,7 +131,9 @@ python3 scripts/daily_ai_news.py --video "https://www.youtube.com/watch?v=..." -
 │   ├── daily_ai_news.py       # 主程序：文章生成、封面图、推送
 │   ├── batch_generate.py      # 批量生成：按主题列表批量生成系列文章
 │   ├── image_processor.py     # 图片处理：文章内配图的下载和上传
-│   └── video_analyzer.py      # 视频分析：YouTube 视频深度解析
+│   ├── video_analyzer.py      # 视频分析：YouTube 视频深度解析
+│   ├── llm_adapter.py         # LLM 适配层：Claude / DeepSeek / OpenAI
+│   └── search_adapter.py      # 搜索适配层：Tavily / SerpAPI
 │
 ├── prompts/                   # Prompt 模板
 │   ├── prompt_template.txt    # 日报模式 Prompt 模板
@@ -113,7 +142,8 @@ python3 scripts/daily_ai_news.py --video "https://www.youtube.com/watch?v=..." -
 │
 ├── docs/                      # 文档
 │   ├── open-api.md            # Ink 平台 API 文档
-│   └── 技术架构与产品化指南.md
+│   ├── 技术架构与产品化指南.md
+│   └── 模型适配层技术方案.md   # LLM/搜索适配层技术细节
 │
 ├── assets/                    # 静态资源（二维码等）
 ├── output/                    # 生成产物（gitignore）
@@ -126,7 +156,9 @@ python3 scripts/daily_ai_news.py --video "https://www.youtube.com/watch?v=..." -
 ## 核心流程
 
 ```
-[1/4] 调用 Claude CLI 联网搜索 + 生成 HTML 文章
+[1/4] 调用 LLM 联网搜索 + 生成 HTML 文章
+      Claude 模式：一体化（模型自带搜索）
+      其他模式：search_adapter 搜索 → 结果注入 prompt → llm_adapter 生成
   ↓
 [2/4] 保存 HTML 到本地 output/articles/ 目录
   ↓
@@ -190,7 +222,7 @@ python3 scripts/batch_generate.py --local  # 仅本地
 
 ## 注意事项
 
-- Claude CLI 需要联网搜索，文章生成需要一定时间
+- Claude CLI 需要联网搜索，文章生成需要一定时间；使用 DeepSeek / OpenAI 时需额外配置搜索服务
 - 微信订阅号不支持外部链接，脚本会自动将 `<a>` 标签转为纯文本
 - 微信标题限制约 64 字节（21 个中文字符），超长标题会自动截断
 - `config.env` 包含敏感信息，已加入 `.gitignore`

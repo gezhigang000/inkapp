@@ -14,7 +14,7 @@ from daily_ai_news import (
     extract_html, extract_title, save_article, generate_cover_image,
     get_access_token, upload_cover_image, create_draft, publish_draft,
     append_footer, get_qrcode_url, split_article_if_needed,
-    pick_daily_variation, COVER_THEMES, QRCODE_IMAGE, CONFIG_FILE,
+    pick_daily_variation, push_to_ink, COVER_THEMES, QRCODE_IMAGE, CONFIG_FILE,
 )
 from image_processor import process_images_in_html
 from datetime import datetime
@@ -145,6 +145,12 @@ def main():
                 "img_path": str(img_path) if img_path else None,
                 "status": "saved",
             }
+
+            # 推送到 Ink 平台（优先）
+            if config.get("INK_API_KEY") and not args["local"]:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    ink_html = f.read()
+                push_to_ink(config, part_title, ink_html, author, img_path)
 
             # 推送草稿
             if not args["local"] and access_token:

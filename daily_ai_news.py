@@ -1117,8 +1117,88 @@ def publish_draft(access_token, media_id):
 
 
 # ============================================================
-# 视频深度分析流程
+# Ink 平台推送
 # ============================================================
+
+INK_BASE_URL = "https://ink.starapp.net"
+
+
+def ink_upload_cover(api_key, image_path):
+    """上传封面图到 Ink 平台 OSS"""
+    import requests
+
+    url = f"{INK_BASE_URL}/api/open/upload"
+    headers = {"Authorization": f"Bearer {api_key}"}
+
+    with open(image_path, "rb") as f:
+        files = {"file": (os.path.basename(image_path), f, "image/png")}
+        resp = requests.post(url, headers=headers, files=files, timeout=30)
+
+    if resp.status_code != 200:
+        print(f"      [Ink] 封面上传失败: HTTP {resp.status_code} {resp.text[:200]}")
+        return None
+
+    data = resp.json()
+    cover_key = data.get("key")
+    if cover_key:
+        print(f"      [Ink] 封面已上传: {cover_key}")
+    return cover_key
+
+
+def ink_create_article(api_key, title, html_content, author, cover_key=None, category="AI"):
+    """在 Ink 平台创建文章"""
+    import requests
+
+    url = f"{INK_BASE_URL}/api/open/articles"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-Force-Create": "true",
+    }
+
+    payload = {
+        "title": title,
+        "htmlContent": html_content,
+        "authorName": author,
+        "category": category,
+        "autoPublish": True,
+    }
+    if cover_key:
+        payload["coverKey"] = cover_key
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+
+    if resp.status_code == 201:
+        data = resp.json()
+        article_url = data.get("url", "")
+        print(f"      [Ink] 文章已发布: {article_url}")
+        return data
+    elif resp.status_code == 409:
+        print(f"      [Ink] 标题重复，跳过")
+        return None
+    else:
+        print(f"      [Ink] 创建失败: HTTP {resp.status_code} {resp.text[:200]}")
+        return None
+
+
+def push_to_ink(config, title, html_content, author, cover_image_path=None):
+    """
+    推送文章到 Ink 平台。
+    返回 Ink 文章数据 dict 或 None。
+    """
+    api_key = config.get("INK_API_KEY", "")
+    if not api_key:
+        return None
+
+    print("      [Ink] 正在推送到 Ink 平台...")
+
+    # 上传封面图
+    cover_key = None
+    if cover_image_path and os.path.exists(str(cover_image_path)):
+        cover_key = ink_upload_cover(api_key, str(cover_image_path))
+
+    # 创建文章
+    return ink_create_article(api_key, title, html_content, author, cover_key)
 
 
 def run_video_analysis(video_url, config, args):
@@ -1197,7 +1277,14 @@ def run_video_analysis(video_url, config, args):
         print(f"       预览: open {filepaths[0]}")
         return
 
-    # 第四步：推送到微信公众号
+    # 推送到 Ink 平台（优先）
+    if config.get("INK_API_KEY"):
+        for idx, (part_title, _) in enumerate(articles):
+            with open(filepaths[idx], "r", encoding="utf-8") as f:
+                ink_html = f.read()
+            push_to_ink(config, part_title, ink_html, author, img_paths[idx])
+
+    # 推送到微信公众号
     app_id = config.get("WECHAT_APP_ID", "")
     app_secret = config.get("WECHAT_APP_SECRET", "")
 
@@ -1333,7 +1420,14 @@ def main():
         print(f"       预览: open {filepaths[0]}")
         return
 
-    # 第四步：推送到微信公众号
+    # 推送到 Ink 平台（优先）
+    if config.get("INK_API_KEY"):
+        for idx, (part_title, _) in enumerate(articles):
+            with open(filepaths[idx], "r", encoding="utf-8") as f:
+                ink_html = f.read()
+            push_to_ink(config, part_title, ink_html, author, img_paths[idx])
+
+    # 推送到微信公众号
     app_id = config.get("WECHAT_APP_ID", "")
     app_secret = config.get("WECHAT_APP_SECRET", "")
 

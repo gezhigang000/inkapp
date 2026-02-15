@@ -891,17 +891,11 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
 
         # --- 副标题 ---
         sub_y = title_y + 12
-        if topic:
-            sub_text = topic
-        else:
-            sub_text = "Google  ·  OpenAI  ·  Anthropic"
+        sub_text = "质取tech"
         draw.text((60, sub_y), sub_text, fill="#9ca3af", font=font_sub)
     else:
         # 无标题模式：只显示副标题，居中偏下
-        if topic:
-            sub_text = topic
-        else:
-            sub_text = "Google  ·  OpenAI  ·  Anthropic"
+        sub_text = "质取tech"
         bbox = draw.textbbox((0, 0), sub_text, font=font_sub)
         sub_w = bbox[2] - bbox[0]
         draw.text(((W - sub_w) // 2, H - 50), sub_text, fill="#9ca3af", font=font_sub)
@@ -1009,7 +1003,7 @@ def append_footer(html_content, qrcode_url=None):
     )
     footer_parts.append(
         '<p style="font-size:15px;color:#333;font-weight:bold;margin-bottom:12px;">'
-        '关注本公众号，回复「报告」，免费获取 Anthropic 2026 三份趋势报告原文 PDF'
+        '关注公众号「嗨清单」，回复「报告」，免费获取 Anthropic 2026 三份趋势报告原文 PDF'
         '</p>'
     )
     if qrcode_url:

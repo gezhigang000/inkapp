@@ -855,7 +855,7 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
         title = "AI 前沿动态速递"
 
     rng = _make_rng(timestamp)
-    show_title = rng.random() < 0.5  # 50% 概率显示标题
+    show_title = True  # 始终显示标题
 
     if show_title:
         max_width = W - 120

@@ -1145,7 +1145,63 @@ def ink_upload_cover(api_key, image_path):
     return cover_key
 
 
-def ink_create_article(api_key, title, html_content, author, cover_key=None, category="AI"):
+def _html_to_markdown(html):
+    """将 HTML 简单转换为 Markdown 文本"""
+    import re
+    text = html
+    # 标题
+    text = re.sub(r'<h1[^>]*>(.*?)</h1>', r'# \1\n', text, flags=re.DOTALL)
+    text = re.sub(r'<h2[^>]*>(.*?)</h2>', r'## \1\n', text, flags=re.DOTALL)
+    text = re.sub(r'<h3[^>]*>(.*?)</h3>', r'### \1\n', text, flags=re.DOTALL)
+    text = re.sub(r'<h4[^>]*>(.*?)</h4>', r'#### \1\n', text, flags=re.DOTALL)
+    # 粗体/斜体
+    text = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', text, flags=re.DOTALL)
+    text = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', text, flags=re.DOTALL)
+    text = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', text, flags=re.DOTALL)
+    # 链接
+    text = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', r'[\2](\1)', text, flags=re.DOTALL)
+    # 列表
+    text = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', text, flags=re.DOTALL)
+    # 换行
+    text = re.sub(r'<br\s*/?>', '\n', text)
+    text = re.sub(r'</p>', '\n\n', text)
+    text = re.sub(r'</div>', '\n', text)
+    text = re.sub(r'</section>', '\n', text)
+    # 清除剩余标签
+    text = re.sub(r'<[^>]+>', '', text)
+    # 清理多余空行和空格
+    text = re.sub(r'&nbsp;', ' ', text)
+    text = re.sub(r'&lt;', '<', text)
+    text = re.sub(r'&gt;', '>', text)
+    text = re.sub(r'&amp;', '&', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
+def _extract_summary(html, max_len=480):
+    """从 HTML 中提取摘要文本（取前几段正文）"""
+    import re
+    # 提取所有 <p> 标签中的文本
+    paragraphs = re.findall(r'<p[^>]*>(.*?)</p>', html, re.DOTALL)
+    summary_parts = []
+    total = 0
+    for p in paragraphs:
+        clean = re.sub(r'<[^>]+>', '', p).strip()
+        # 跳过太短的（可能是标签、分隔符等）
+        if len(clean) < 15:
+            continue
+        if total + len(clean) > max_len:
+            remaining = max_len - total
+            if remaining > 30:
+                summary_parts.append(clean[:remaining] + "...")
+            break
+        summary_parts.append(clean)
+        total += len(clean)
+    return " ".join(summary_parts) if summary_parts else ""
+
+
+def ink_create_article(api_key, title, html_content, author, cover_key=None,
+                       summary=None, markdown_content=None, category="AI"):
     """在 Ink 平台创建文章"""
     import requests
 
@@ -1165,6 +1221,10 @@ def ink_create_article(api_key, title, html_content, author, cover_key=None, cat
     }
     if cover_key:
         payload["coverKey"] = cover_key
+    if summary:
+        payload["summary"] = summary[:500]
+    if markdown_content:
+        payload["content"] = markdown_content
 
     resp = requests.post(url, headers=headers, json=payload, timeout=60)
 
@@ -1192,13 +1252,18 @@ def push_to_ink(config, title, html_content, author, cover_image_path=None):
 
     print("      [Ink] 正在推送到 Ink 平台...")
 
+    # 生成摘要和 Markdown
+    summary = _extract_summary(html_content)
+    markdown_content = _html_to_markdown(html_content)
+
     # 上传封面图
     cover_key = None
     if cover_image_path and os.path.exists(str(cover_image_path)):
         cover_key = ink_upload_cover(api_key, str(cover_image_path))
 
     # 创建文章
-    return ink_create_article(api_key, title, html_content, author, cover_key)
+    return ink_create_article(api_key, title, html_content, author, cover_key,
+                              summary=summary, markdown_content=markdown_content)
 
 
 def run_video_analysis(video_url, config, args):

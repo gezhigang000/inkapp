@@ -95,12 +95,12 @@ STRUCTURE_POOL = [
 
 # 封面图配色方案池（浅色简洁风格）
 COVER_THEMES = [
-    {"bg": "#ffffff", "accent": "#4a6cf7", "text": "#1a1a2e"},
-    {"bg": "#f8fafc", "accent": "#2563eb", "text": "#0f172a"},
-    {"bg": "#fafaf9", "accent": "#d97706", "text": "#292524"},
-    {"bg": "#f0fdf4", "accent": "#16a34a", "text": "#14532d"},
-    {"bg": "#faf5ff", "accent": "#9333ea", "text": "#3b0764"},
-    {"bg": "#fff7ed", "accent": "#ea580c", "text": "#431407"},
+    {"bg": "#f8fafc", "accent": "#6b8acd", "text": "#1e293b"},   # 柔蓝
+    {"bg": "#f5f5f4", "accent": "#8b9fba", "text": "#1c1917"},   # 灰蓝
+    {"bg": "#faf9f7", "accent": "#c4956a", "text": "#292524"},   # 暖棕
+    {"bg": "#f9f5ff", "accent": "#9b8ac4", "text": "#2e1065"},   # 淡紫
+    {"bg": "#faf8f5", "accent": "#b08d72", "text": "#3c2415"},   # 浅驼
+    {"bg": "#f5f7fa", "accent": "#7b9eb8", "text": "#1a2332"},   # 雾蓝
 ]
 
 
@@ -586,79 +586,243 @@ def _blend_color(fg_hex, bg_hex, alpha):
     return tuple(int(bg[i] + (fg[i] - bg[i]) * alpha) for i in range(3))
 
 
-def _draw_tech_background(draw, W, H, accent_color, bg_color):
-    """在封面图上绘制淡淡的科技感几何背景图案"""
-    seed = int(hashlib.md5(datetime.now().strftime("%Y-%m-%d").encode()).hexdigest(), 16)
-    rng = random.Random(seed)
+def _make_rng(title=""):
+    """基于标题和当前时间创建随机数生成器，确保同一标题同一时间生成相同图案"""
+    seed_str = f"{title}-{datetime.now().strftime('%Y-%m-%d-%H%M')}"
+    seed = int(hashlib.md5(seed_str.encode()).hexdigest(), 16)
+    return random.Random(seed)
 
-    # 极淡的颜色用于背景图案
-    very_light = _blend_color(accent_color, bg_color, 0.08)
-    light = _blend_color(accent_color, bg_color, 0.12)
-    medium_light = _blend_color(accent_color, bg_color, 0.06)
 
-    # 1. 右侧区域：网格点阵
-    dot_spacing = 40
-    for x in range(W // 2, W, dot_spacing):
-        for y in range(20, H - 20, dot_spacing):
+# --- 布局 1：右侧网络节点（经典风格）---
+def _layout_network_nodes(draw, W, H, accent, bg, rng):
+    vl = _blend_color(accent, bg, 0.08)
+    lt = _blend_color(accent, bg, 0.12)
+    ml = _blend_color(accent, bg, 0.06)
+
+    for x in range(W // 2, W, 40):
+        for y in range(20, H - 20, 40):
             if rng.random() < 0.3:
                 continue
             r = rng.choice([2, 3])
-            draw.ellipse([(x - r, y - r), (x + r, y + r)], fill=very_light)
+            draw.ellipse([(x - r, y - r), (x + r, y + r)], fill=vl)
 
-    # 2. 几个大的圆弧
     for _ in range(3):
-        cx = rng.randint(W // 2, W + 100)
-        cy = rng.randint(-50, H + 50)
+        cx, cy = rng.randint(W // 2, W + 100), rng.randint(-50, H + 50)
         radius = rng.randint(80, 200)
-        start_angle = rng.randint(0, 180)
-        draw.arc(
-            [(cx - radius, cy - radius), (cx + radius, cy + radius)],
-            start=start_angle,
-            end=start_angle + rng.randint(60, 180),
-            fill=light,
-            width=1,
-        )
+        sa = rng.randint(0, 180)
+        draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                 start=sa, end=sa + rng.randint(60, 180), fill=lt, width=1)
 
-    # 3. 几条斜线
-    for _ in range(4):
-        x1 = rng.randint(W // 3, W)
-        y1 = rng.randint(0, H)
-        length = rng.randint(80, 200)
-        angle = rng.choice([30, 45, 60, 120, 135, 150])
-        x2 = x1 + int(length * math.cos(math.radians(angle)))
-        y2 = y1 + int(length * math.sin(math.radians(angle)))
-        draw.line([(x1, y1), (x2, y2)], fill=medium_light, width=1)
-
-    # 4. 几个六边形轮廓
     for _ in range(2):
-        cx = rng.randint(W * 2 // 3, W - 30)
-        cy = rng.randint(30, H - 30)
+        cx, cy = rng.randint(W * 2 // 3, W - 30), rng.randint(30, H - 30)
         size = rng.randint(25, 50)
-        points = []
-        for i in range(6):
-            a = math.radians(60 * i - 30)
-            px = cx + size * math.cos(a)
-            py = cy + size * math.sin(a)
-            points.append((px, py))
-        draw.polygon(points, outline=light)
+        pts = [(cx + size * math.cos(math.radians(60 * i - 30)),
+                cy + size * math.sin(math.radians(60 * i - 30))) for i in range(6)]
+        draw.polygon(pts, outline=lt)
 
-    # 5. 连接部分点形成"网络节点"效果
     nodes = []
     for x in range(W * 2 // 3, W - 20, 60):
         for y in range(30, H - 30, 60):
             if rng.random() < 0.5:
                 nodes.append((x + rng.randint(-10, 10), y + rng.randint(-10, 10)))
-
     for i, (x1, y1) in enumerate(nodes):
         for x2, y2 in nodes[i + 1:]:
-            dist = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-            if dist < 100 and rng.random() < 0.4:
-                draw.line([(x1, y1), (x2, y2)], fill=medium_light, width=1)
-
-    # 在节点位置画小圆点
+            if math.hypot(x2 - x1, y2 - y1) < 100 and rng.random() < 0.4:
+                draw.line([(x1, y1), (x2, y2)], fill=ml, width=1)
     for x, y in nodes:
-        r = 3
-        draw.ellipse([(x - r, y - r), (x + r, y + r)], fill=light)
+        draw.ellipse([(x - 3, y - 3), (x + 3, y + 3)], fill=lt)
+
+
+# --- 布局 2：散布粒子光点（全背景）---
+def _layout_particles(draw, W, H, accent, bg, rng):
+    lt = _blend_color(accent, bg, 0.10)
+    vl = _blend_color(accent, bg, 0.06)
+
+    # 大量散布的小圆点
+    for _ in range(120):
+        x, y = rng.randint(0, W), rng.randint(0, H)
+        r = rng.choice([1, 1, 2, 2, 3])
+        c = lt if r >= 2 else vl
+        draw.ellipse([(x - r, y - r), (x + r, y + r)], fill=c)
+
+    # 少量大一点的光晕圆
+    for _ in range(5):
+        x, y = rng.randint(W // 4, W), rng.randint(20, H - 20)
+        r = rng.randint(15, 40)
+        draw.ellipse([(x - r, y - r), (x + r, y + r)], outline=_blend_color(accent, bg, 0.07))
+
+    # 几条极淡的弧线穿过
+    for _ in range(3):
+        cx = rng.randint(-100, W + 100)
+        cy = rng.randint(-100, H + 100)
+        radius = rng.randint(150, 400)
+        sa = rng.randint(0, 360)
+        draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                 start=sa, end=sa + rng.randint(40, 120), fill=vl, width=1)
+
+
+# --- 布局 3：角落大弧线 + 侧边色条 ---
+def _layout_corner_arcs(draw, W, H, accent, bg, rng):
+    lt = _blend_color(accent, bg, 0.10)
+    ml = _blend_color(accent, bg, 0.07)
+
+    # 右上角的大同心弧
+    cx, cy = W + 50, -30
+    for i in range(5):
+        radius = 120 + i * 50
+        draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                 start=140, end=250, fill=lt if i % 2 == 0 else ml, width=1)
+
+    # 左下角的大同心弧
+    cx, cy = -30, H + 30
+    for i in range(4):
+        radius = 100 + i * 45
+        draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                 start=-30, end=60, fill=ml, width=1)
+
+    # 右侧竖向装饰色条
+    bar_x = W - 20
+    draw.rectangle([(bar_x, 30), (bar_x + 4, H - 30)], fill=_blend_color(accent, bg, 0.15))
+
+    # 散布几个小菱形
+    for _ in range(6):
+        cx = rng.randint(W // 3, W - 40)
+        cy = rng.randint(20, H - 20)
+        s = rng.randint(6, 14)
+        pts = [(cx, cy - s), (cx + s, cy), (cx, cy + s), (cx - s, cy)]
+        draw.polygon(pts, outline=ml)
+
+
+# --- 布局 4：电路板风格 ---
+def _layout_circuit(draw, W, H, accent, bg, rng):
+    lt = _blend_color(accent, bg, 0.10)
+    ml = _blend_color(accent, bg, 0.06)
+    node_c = _blend_color(accent, bg, 0.14)
+
+    # 横线 + 竖线 + 转角
+    paths = []
+    for _ in range(8):
+        x = rng.randint(W // 3, W - 20)
+        y = rng.randint(10, H - 10)
+        segments = rng.randint(2, 4)
+        direction = rng.choice(['h', 'v'])
+        for _ in range(segments):
+            length = rng.randint(40, 150)
+            if direction == 'h':
+                x2 = min(max(x + rng.choice([-1, 1]) * length, 0), W)
+                draw.line([(x, y), (x2, y)], fill=ml, width=1)
+                # 转角节点
+                r = 3
+                draw.ellipse([(x2 - r, y - r), (x2 + r, y + r)], fill=node_c)
+                x = x2
+                direction = 'v'
+            else:
+                y2 = min(max(y + rng.choice([-1, 1]) * length, 0), H)
+                draw.line([(x, y), (x, y2)], fill=ml, width=1)
+                r = 3
+                draw.ellipse([(x - r, y2 - r), (x + r, y2 + r)], fill=node_c)
+                y = y2
+                direction = 'h'
+
+    # 散布方形"芯片"
+    for _ in range(4):
+        cx = rng.randint(W // 2, W - 30)
+        cy = rng.randint(20, H - 20)
+        s = rng.randint(8, 16)
+        draw.rectangle([(cx - s, cy - s), (cx + s, cy + s)], outline=lt)
+        # 芯片引脚
+        for offset in range(-s + 4, s, 6):
+            draw.line([(cx + offset, cy - s), (cx + offset, cy - s - 5)], fill=ml, width=1)
+            draw.line([(cx + offset, cy + s), (cx + offset, cy + s + 5)], fill=ml, width=1)
+
+
+# --- 布局 5：半透明几何叠层 ---
+def _layout_geo_layers(draw, W, H, accent, bg, rng):
+    # 几个大的半透明圆形叠加
+    for _ in range(4):
+        cx = rng.randint(W // 3, W + 50)
+        cy = rng.randint(-50, H + 50)
+        r = rng.randint(60, 180)
+        alpha = rng.uniform(0.04, 0.08)
+        c = _blend_color(accent, bg, alpha)
+        # 画填充圆（用椭圆近似）
+        draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], fill=c)
+
+    # 几个矩形叠加
+    for _ in range(3):
+        x1 = rng.randint(W // 4, W)
+        y1 = rng.randint(-20, H)
+        w = rng.randint(80, 200)
+        h = rng.randint(40, 120)
+        alpha = rng.uniform(0.03, 0.06)
+        c = _blend_color(accent, bg, alpha)
+        draw.rectangle([(x1, y1), (x1 + w, y1 + h)], fill=c)
+
+    # 装饰性的细线框
+    for _ in range(3):
+        x1 = rng.randint(W // 2, W - 20)
+        y1 = rng.randint(10, H - 10)
+        w = rng.randint(30, 80)
+        h = rng.randint(20, 60)
+        draw.rectangle([(x1, y1), (x1 + w, y1 + h)],
+                       outline=_blend_color(accent, bg, 0.10))
+
+    # 对角线装饰
+    lt = _blend_color(accent, bg, 0.06)
+    draw.line([(W - 200, 0), (W, 200)], fill=lt, width=1)
+    draw.line([(W - 250, 0), (W, 250)], fill=lt, width=1)
+
+
+# --- 布局 6：波纹扩散 ---
+def _layout_ripples(draw, W, H, accent, bg, rng):
+    # 从某个角扩散同心弧线
+    origins = [
+        (rng.randint(W - 150, W + 50), rng.randint(-50, 50)),       # 右上
+        (rng.randint(-50, 100), rng.randint(H - 50, H + 50)),       # 左下
+    ]
+
+    for cx, cy in origins:
+        n_rings = rng.randint(5, 9)
+        for i in range(n_rings):
+            r = 50 + i * 40
+            alpha = max(0.03, 0.12 - i * 0.012)
+            c = _blend_color(accent, bg, alpha)
+            draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], outline=c)
+
+    # 散布的十字标记
+    ml = _blend_color(accent, bg, 0.08)
+    for _ in range(10):
+        x = rng.randint(W // 4, W - 20)
+        y = rng.randint(10, H - 10)
+        s = rng.choice([4, 6, 8])
+        draw.line([(x - s, y), (x + s, y)], fill=ml, width=1)
+        draw.line([(x, y - s), (x, y + s)], fill=ml, width=1)
+
+    # 几条细虚线（用短线段模拟）
+    lt = _blend_color(accent, bg, 0.06)
+    for _ in range(3):
+        y = rng.randint(20, H - 20)
+        x_start = rng.randint(W // 3, W // 2)
+        for x in range(x_start, W - 10, 12):
+            draw.line([(x, y), (x + 5, y)], fill=lt, width=1)
+
+
+# 所有布局函数列表
+_LAYOUT_FUNCS = [
+    _layout_network_nodes,
+    _layout_particles,
+    _layout_corner_arcs,
+    _layout_circuit,
+    _layout_geo_layers,
+    _layout_ripples,
+]
+
+
+def _draw_tech_background(draw, W, H, accent_color, bg_color, title=""):
+    """随机选择一种布局风格，绘制科技感几何背景图案"""
+    rng = _make_rng(title)
+    layout_idx = rng.randint(0, len(_LAYOUT_FUNCS) - 1)
+    _LAYOUT_FUNCS[layout_idx](draw, W, H, accent_color, bg_color, rng)
 
 
 def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
@@ -681,7 +845,7 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
     draw = ImageDraw.Draw(img)
 
     # --- 科技感几何背景图案 ---
-    _draw_tech_background(draw, W, H, accent_color, bg_color)
+    _draw_tech_background(draw, W, H, accent_color, bg_color, title=timestamp)
 
     # --- 顶部强调色细线 ---
     draw.rectangle([(0, 0), (W, 4)], fill=accent_color)
@@ -706,48 +870,61 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
         font_title = ImageFont.load_default()
         font_sub = font_title
 
-    # --- 主标题（自动换行，垂直居中）---
+    # --- 主标题（随机决定是否显示）---
     if not title:
         title = "AI 前沿动态速递"
 
-    max_width = W - 120
-    lines = []
-    current_line = ""
-    for char in title:
-        test_line = current_line + char
-        bbox = draw.textbbox((0, 0), test_line, font=font_title)
-        if bbox[2] - bbox[0] > max_width:
+    rng = _make_rng(timestamp)
+    show_title = rng.random() < 0.5  # 50% 概率显示标题
+
+    if show_title:
+        max_width = W - 120
+        lines = []
+        current_line = ""
+        for char in title:
+            test_line = current_line + char
+            bbox = draw.textbbox((0, 0), test_line, font=font_title)
+            if bbox[2] - bbox[0] > max_width:
+                lines.append(current_line)
+                current_line = char
+            else:
+                current_line = test_line
+        if current_line:
             lines.append(current_line)
-            current_line = char
+
+        lines = lines[:2]
+        if len(lines) == 2 and len(lines[1]) > 0:
+            bbox = draw.textbbox((0, 0), lines[1], font=font_title)
+            if bbox[2] - bbox[0] > max_width:
+                while bbox[2] - bbox[0] > max_width - 40:
+                    lines[1] = lines[1][:-1]
+                    bbox = draw.textbbox((0, 0), lines[1] + "...", font=font_title)
+                lines[1] = lines[1] + "..."
+
+        line_height = 52
+        total_text_height = len(lines) * line_height + 30
+        title_y = (H - total_text_height) // 2
+
+        for line in lines:
+            draw.text((60, title_y), line, fill=text_color, font=font_title)
+            title_y += line_height
+
+        # --- 副标题 ---
+        sub_y = title_y + 12
+        if topic:
+            sub_text = topic
         else:
-            current_line = test_line
-    if current_line:
-        lines.append(current_line)
-
-    lines = lines[:2]
-    if len(lines) == 2 and len(lines[1]) > 0:
-        bbox = draw.textbbox((0, 0), lines[1], font=font_title)
-        if bbox[2] - bbox[0] > max_width:
-            while bbox[2] - bbox[0] > max_width - 40:
-                lines[1] = lines[1][:-1]
-                bbox = draw.textbbox((0, 0), lines[1] + "...", font=font_title)
-            lines[1] = lines[1] + "..."
-
-    line_height = 52
-    total_text_height = len(lines) * line_height + 30  # 标题 + 副标题间距
-    title_y = (H - total_text_height) // 2
-
-    for line in lines:
-        draw.text((60, title_y), line, fill=text_color, font=font_title)
-        title_y += line_height
-
-    # --- 副标题 ---
-    sub_y = title_y + 12
-    if topic:
-        sub_text = topic
+            sub_text = "Google  ·  OpenAI  ·  Anthropic"
+        draw.text((60, sub_y), sub_text, fill="#9ca3af", font=font_sub)
     else:
-        sub_text = "Google  ·  OpenAI  ·  Anthropic"
-    draw.text((60, sub_y), sub_text, fill="#9ca3af", font=font_sub)
+        # 无标题模式：只显示副标题，居中偏下
+        if topic:
+            sub_text = topic
+        else:
+            sub_text = "Google  ·  OpenAI  ·  Anthropic"
+        bbox = draw.textbbox((0, 0), sub_text, font=font_sub)
+        sub_w = bbox[2] - bbox[0]
+        draw.text(((W - sub_w) // 2, H - 50), sub_text, fill="#9ca3af", font=font_sub)
 
     # --- 底部装饰线 ---
     draw.line([(60, H - 15), (W - 60, H - 15)], fill=accent_color, width=2)

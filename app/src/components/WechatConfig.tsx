@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useConfig } from "../hooks/useConfig";
 
 export default function WechatConfig() {
   const { getConfig, updateConfig } = useConfig();
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+  const [publicIp, setPublicIp] = useState<string>("");
+  const [ipCopied, setIpCopied] = useState(false);
+
+  useEffect(() => {
+    fetch("https://api.ipify.org?format=json")
+      .then((r) => r.json())
+      .then((data) => setPublicIp(data.ip))
+      .catch(() => {
+        fetch("https://ifconfig.me/ip")
+          .then((r) => r.text())
+          .then((ip) => setPublicIp(ip.trim()))
+          .catch(() => setPublicIp("获取失败"));
+      });
+  }, []);
+
+  const copyIp = () => {
+    if (publicIp && publicIp !== "获取失败") {
+      navigator.clipboard.writeText(publicIp);
+      setIpCopied(true);
+      setTimeout(() => setIpCopied(false), 2000);
+    }
+  };
 
   const handleTest = async () => {
     setTesting(true);
@@ -44,6 +66,30 @@ export default function WechatConfig() {
       </h3>
       <p className="text-sm mb-4" style={{ color: "oklch(0.50 0 0)" }}>
         配置后可将创作的文章直接发布到微信公众号。在微信公众平台 → 开发 → 基本配置中获取。
+      </p>
+      <div
+        className="flex items-center gap-2 mb-4 px-3 py-2 rounded-[10px] text-sm"
+        style={{ background: "oklch(0.97 0.005 265)", border: "1px solid oklch(0.91 0 0)" }}
+      >
+        <span style={{ color: "oklch(0.40 0 0)" }}>当前公网 IP：</span>
+        <span className="font-mono font-medium" style={{ color: "oklch(0.15 0.005 265)" }}>
+          {publicIp || "获取中..."}
+        </span>
+        {publicIp && publicIp !== "获取失败" && (
+          <button
+            onClick={copyIp}
+            className="ml-auto px-2 py-0.5 text-xs rounded-md cursor-pointer transition-colors"
+            style={{
+              background: ipCopied ? "oklch(0.45 0.1 145)" : "oklch(0.27 0.005 265)",
+              color: "oklch(0.98 0.002 90)",
+            }}
+          >
+            {ipCopied ? "已复制 ✓" : "复制"}
+          </button>
+        )}
+      </div>
+      <p className="text-xs mb-4" style={{ color: "oklch(0.60 0 0)" }}>
+        请将此 IP 添加到微信公众平台 → 开发 → 基本配置 → IP 白名单中
       </p>
       <div className="space-y-4">
         <div>

@@ -255,13 +255,22 @@ def _run_python_exec(code, workspace):
             os.chdir(workspace)
             import io
             buf = io.StringIO()
-            old_stdout = sys.stdout
+            # 使用线程局部的 stdout 重定向，避免干扰主线程的 JSON 输出
+            saved_stdout = sys.stdout
+            saved_stderr = sys.stderr
+            err_buf = io.StringIO()
             sys.stdout = buf
+            sys.stderr = err_buf
             try:
                 exec(code, {"__builtins__": __builtins__})
             finally:
-                sys.stdout = old_stdout
-            result["output"] = buf.getvalue()
+                sys.stdout = saved_stdout
+                sys.stderr = saved_stderr
+            output = buf.getvalue()
+            err_output = err_buf.getvalue()
+            if err_output:
+                output += f"\n[stderr]\n{err_output}"
+            result["output"] = output
         except Exception as e:
             result["error"] = str(e)
         finally:

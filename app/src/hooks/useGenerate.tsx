@@ -14,6 +14,8 @@ interface GenerateResult {
   title: string;
   htmlContent: string;
   coverPath?: string;
+  fileType?: string;       // "html" | "docx" | "xlsx" | "pdf"
+  metadataPath?: string;
 }
 
 interface GenerateContextValue {
@@ -69,6 +71,8 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
                 title: data.title || "未命名文章",
                 htmlContent: html,
                 coverPath: undefined,
+                fileType: (data.file_type as string) || "html",
+                metadataPath: (data.metadata_path as string) || undefined,
               });
             });
           }

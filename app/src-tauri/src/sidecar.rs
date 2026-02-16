@@ -15,6 +15,9 @@ fn ink_home() -> PathBuf {
     }
 }
 
+/// Sidecar event struct — kept for reference; event forwarding uses serde_json::Value
+/// to transparently pass all fields (including Agent-specific ones).
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SidecarEvent {
     pub r#type: String,
@@ -59,16 +62,25 @@ pub async fn run_sidecar(
     let shell = app.shell();
 
     // 优先使用 PyInstaller 打包的 sidecar 二进制（不依赖本地 Python）；
-    // 如果 sidecar 不可用，回退到 python3 直接执行。
-    let (mut rx, mut child) = match shell.sidecar("python-sidecar") {
-        Ok(cmd) => cmd
-            .env("PYTHONIOENCODING", "utf-8")
-            .env("PYTHONUTF8", "1")
-            .spawn()
-            .map_err(|e| {
-                format!("Failed to spawn sidecar binary: {}", e)
-            })?,
-        Err(_) => {
+    // 如果 sidecar 不可用（找不到或启动失败），回退到 python3 直接执行。
+    // 开发模式下始终使用 python3，确保运行最新的 Python 源码。
+    let sidecar_result = if cfg!(dev) {
+        None
+    } else {
+        shell
+            .sidecar("python-sidecar")
+            .ok()
+            .and_then(|cmd| {
+                cmd.env("PYTHONIOENCODING", "utf-8")
+                    .env("PYTHONUTF8", "1")
+                    .spawn()
+                    .ok()
+            })
+    };
+
+    let (mut rx, mut child) = match sidecar_result {
+        Some(spawned) => spawned,
+        None => {
             let script_path = resolve_script_path(&app)
                 .unwrap_or_else(|| "scripts/sidecar_main.py".to_string());
             shell
@@ -98,20 +110,17 @@ pub async fn run_sidecar(
         match event {
             CommandEvent::Stdout(line) => {
                 let line_str = String::from_utf8_lossy(&line).to_string();
-                if let Ok(sidecar_event) = serde_json::from_str::<SidecarEvent>(&line_str) {
-                    let _ = app.emit("sidecar-event", &sidecar_event);
+                // Use serde_json::Value for transparent forwarding of all fields
+                // (Agent mode sends extra fields like turn, tool, detail)
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(&line_str) {
+                    let _ = app.emit("sidecar-event", &value);
                 } else if !line_str.trim().is_empty() {
                     // Forward non-JSON stdout as log events
-                    let log_event = SidecarEvent {
-                        r#type: "progress".to_string(),
-                        stage: Some("log".to_string()),
-                        message: Some(line_str.clone()),
-                        percent: None,
-                        status: None,
-                        article_path: None,
-                        title: None,
-                        code: None,
-                    };
+                    let log_event = serde_json::json!({
+                        "type": "progress",
+                        "stage": "log",
+                        "message": line_str.clone(),
+                    });
                     let _ = app.emit("sidecar-event", &log_event);
                 }
                 output_lines.push(line_str);
@@ -120,16 +129,11 @@ pub async fn run_sidecar(
                 let line_str = String::from_utf8_lossy(&line).to_string();
                 eprintln!("Sidecar stderr: {}", line_str);
                 if !line_str.trim().is_empty() {
-                    let log_event = SidecarEvent {
-                        r#type: "progress".to_string(),
-                        stage: Some("log".to_string()),
-                        message: Some(format!("[stderr] {}", line_str)),
-                        percent: None,
-                        status: None,
-                        article_path: None,
-                        title: None,
-                        code: None,
-                    };
+                    let log_event = serde_json::json!({
+                        "type": "progress",
+                        "stage": "log",
+                        "message": format!("[stderr] {}", line_str),
+                    });
                     let _ = app.emit("sidecar-event", &log_event);
                 }
             }

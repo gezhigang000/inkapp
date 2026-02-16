@@ -8,6 +8,7 @@ export interface PromptTemplate {
   /** "topic" input or "video" url input */
   inputType: "topic" | "video";
   builtin?: boolean;
+  agentMode?: boolean;
 }
 
 const DEEP_RESEARCH_PROMPT = `你是一个有十年工作经验的软件工程师，同时也是一个 AI 技术领域的深度研究者，在微信公众号上分享你对前沿技术的深度调研和独立思考。
@@ -405,6 +406,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     prompt: DEEP_RESEARCH_PROMPT,
     inputType: "topic",
     builtin: true,
+    agentMode: true,
   },
   {
     id: "daily-news",
@@ -455,6 +457,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     prompt: DATA_ANALYSIS_PROMPT,
     inputType: "topic",
     builtin: true,
+    agentMode: true,
   },
   {
     id: "ppt-maker",
@@ -475,5 +478,6 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     prompt: TRANSLATE_PROMPT,
     inputType: "topic",
     builtin: true,
+    agentMode: true,
   },
 ];

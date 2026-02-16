@@ -65,6 +65,21 @@ export default function Models() {
         <p className="text-sm mb-4" style={{ color: "oklch(0.50 0 0)" }}>
           配置搜索服务后，创作时可自动联网搜索最新资料。
         </p>
+        <div className="mb-4 flex items-center gap-3">
+          <label className="text-sm" style={{ color: "oklch(0.30 0.005 265)" }}>
+            默认搜索引擎
+          </label>
+          <select
+            value={getConfig("SEARCH_PROVIDER") || "auto"}
+            onChange={(e) => updateConfig("SEARCH_PROVIDER", e.target.value)}
+            className="px-3 h-8 text-sm rounded-[10px]"
+            style={{ border: "1px solid oklch(0.91 0 0)", background: "oklch(1 0 0)", color: "oklch(0.15 0.005 265)" }}
+          >
+            <option value="auto">自动（优先 Tavily）</option>
+            <option value="tavily">Tavily</option>
+            <option value="serpapi">SerpAPI</option>
+          </select>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {SEARCH_PROVIDERS.map((p) => (
             <ModelCard

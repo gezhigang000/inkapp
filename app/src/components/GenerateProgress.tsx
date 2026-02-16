@@ -9,6 +9,11 @@ export interface SidecarEvent {
   article_path?: string;
   title?: string;
   code?: string;
+  // Agent 模式扩展字段
+  file_type?: string;
+  metadata_path?: string;
+  article_count?: number;
+  [key: string]: unknown;
 }
 
 interface GenerateProgressProps {
@@ -59,18 +64,25 @@ export default function GenerateProgress({ events, isRunning }: GenerateProgress
           color: "oklch(0.70 0 0)",
         }}
       >
-        {events.map((e, i) => (
-          <div
-            key={i}
-            style={e.type === "error" ? { color: "oklch(0.63 0.14 52)" } : undefined}
-          >
-            <span style={{ color: "oklch(0.45 0 0)", userSelect: "none" }}>
-              {String(i + 1).padStart(2, "0")}{" "}
-            </span>
-            {e.type === "error" && `[ERROR] `}
-            {e.message || e.stage || "..."}
-          </div>
-        ))}
+        {events.map((e, i) => {
+          const isAgent = e.stage === "agent";
+          const isError = e.type === "error";
+          const lineColor = isError
+            ? "oklch(0.63 0.14 52)"
+            : isAgent
+              ? "oklch(0.72 0.10 200)"
+              : undefined;
+          return (
+            <div key={i} style={lineColor ? { color: lineColor } : undefined}>
+              <span style={{ color: "oklch(0.45 0 0)", userSelect: "none" }}>
+                {String(i + 1).padStart(2, "0")}{" "}
+              </span>
+              {isError && "[ERROR] "}
+              {isAgent && !isError && "⚡ "}
+              {e.message || e.stage || "..."}
+            </div>
+          );
+        })}
         {isRunning && (
           <div className="animate-pulse" style={{ color: "oklch(0.60 0 0)" }}>
             <span style={{ color: "oklch(0.45 0 0)", userSelect: "none" }}>

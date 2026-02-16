@@ -8,9 +8,11 @@ interface ArticlePreviewProps {
   title: string;
   htmlContent: string;
   coverPath?: string;
+  fileType?: string;
+  metadataPath?: string;
 }
 
-export default function ArticlePreview({ title, htmlContent, coverPath }: ArticlePreviewProps) {
+export default function ArticlePreview({ title, htmlContent, coverPath, fileType, metadataPath }: ArticlePreviewProps) {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +64,23 @@ export default function ArticlePreview({ title, htmlContent, coverPath }: Articl
     }
   };
 
+  const handleOpenFolder = async () => {
+    if (!metadataPath) return;
+    try {
+      // Open the directory containing the metadata file
+      const dir = metadataPath.replace(/[/\\][^/\\]+$/, "");
+      await openPath(dir);
+    } catch (err) {
+      console.error("Failed to open folder:", err);
+    }
+  };
+
+  const fileTypeLabel: Record<string, string> = {
+    docx: "Word 文档",
+    xlsx: "Excel 表格",
+    pdf: "PDF 文件",
+  };
+
   return (
     <div
       className="rounded-[14px] overflow-hidden transition-shadow duration-200"
@@ -82,6 +101,18 @@ export default function ArticlePreview({ title, htmlContent, coverPath }: Articl
             {title}
           </h3>
           <div className="flex gap-2 shrink-0">
+            {fileType && fileType !== "html" && metadataPath && (
+              <button
+                onClick={handleOpenFolder}
+                className="px-3 h-8 text-xs font-medium rounded-[10px] transition-[background-color] duration-150"
+                style={{
+                  background: "oklch(0.92 0.05 145)",
+                  color: "oklch(0.30 0.08 145)",
+                }}
+              >
+                {fileTypeLabel[fileType] || fileType.toUpperCase()} · 打开目录
+              </button>
+            )}
             <button
               onClick={handleCopyHtml}
               className="px-3 h-8 text-xs font-medium rounded-[10px] transition-[background-color] duration-150"

@@ -58,7 +58,7 @@ export default function Create() {
     const mode = isVideo ? "video" : selectedTemplate?.id === "daily-news" ? "daily" : "topic";
 
     const payload: Record<string, unknown> = {
-      action: "generate",
+      action: selectedTemplate?.agentMode ? "agent_generate" : "generate",
       mode,
       topic: params.topic || undefined,
       video_url: params.videoUrl || undefined,
@@ -79,6 +79,11 @@ export default function Create() {
     for (const sk of ["TAVILY_API_KEY", "SERPAPI_API_KEY"] as const) {
       const v = getConfig(sk);
       if (v) payload[sk] = v;
+    }
+    // 搜索提供商选择
+    const searchProvider = getConfig("SEARCH_PROVIDER");
+    if (searchProvider && searchProvider !== "auto") {
+      payload.SEARCH_PROVIDER = searchProvider;
     }
 
     // 输出目录
@@ -106,6 +111,15 @@ export default function Create() {
       .map((f) => `=== ${f.name} ===\n${f.extractedText}`)
       .join("\n\n");
     if (fileTexts) payload.file_contents = fileTexts;
+
+    // Agent 模式：传递上传文件的原始格式和路径
+    if (selectedTemplate?.agentMode && uploadedFiles.length > 0) {
+      payload.file_formats = uploadedFiles.map((f) => ({
+        name: f.name,
+        ext: f.name.split(".").pop()?.toLowerCase() || "",
+        path: f.path,
+      }));
+    }
 
     startGenerate(payload);
   };
@@ -201,7 +215,13 @@ export default function Create() {
 
       {/* 文章预览 */}
       {result && (
-        <ArticlePreview title={result.title} htmlContent={result.htmlContent} coverPath={result.coverPath} />
+        <ArticlePreview
+          title={result.title}
+          htmlContent={result.htmlContent}
+          coverPath={result.coverPath}
+          fileType={result.fileType}
+          metadataPath={result.metadataPath}
+        />
       )}
     </div>
   );

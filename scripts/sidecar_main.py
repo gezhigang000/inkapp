@@ -240,6 +240,180 @@ def handle_generate(params):
         emit("error", code="GENERATION_ERROR", message=str(e))
 
 
+def handle_agent_generate(params):
+    """处理 Agent 模式生成请求：多轮工具调用"""
+    import shutil
+    from agent_loop import run_agent_loop, init_workspace
+    from daily_ai_news import (
+        extract_html, extract_title, append_footer,
+        make_timestamp, save_article, generate_cover_image,
+        pick_daily_variation,
+    )
+
+    logger.info("=== agent_generate start === topic=%s provider=%s",
+                params.get("topic", "")[:60], params.get("provider", "?"))
+    emit("progress", stage="init", message="正在初始化 Agent...")
+
+    # 构建 config（同 handle_generate）
+    config = {}
+    if params.get("provider"):
+        config["LLM_PROVIDER"] = params["provider"]
+    for key in ["DEEPSEEK_API_KEY", "GLM_API_KEY", "DOUBAO_API_KEY",
+                "KIMI_API_KEY", "OPENAI_API_KEY",
+                "DEEPSEEK_MODEL", "GLM_MODEL", "DOUBAO_MODEL",
+                "KIMI_MODEL", "OPENAI_MODEL",
+                "TAVILY_API_KEY", "SERPAPI_API_KEY",
+                "SEARCH_PROVIDER", "OUTPUT_DIR"]:
+        if params.get(key):
+            config[key] = params[key]
+
+    topic = params.get("topic", "")
+    file_contents = params.get("file_contents", "")
+    template_prompt = params.get("template_prompt", "")
+    header_html = params.get("header_html", "")
+    footer_html = params.get("footer_html", "")
+    file_formats = params.get("file_formats", None)
+
+    # OSS 配置
+    oss_config = {}
+    for k in ["oss_bucket", "oss_endpoint", "oss_access_key_id", "oss_access_key_secret"]:
+        if params.get(k):
+            oss_config[k] = params[k]
+
+    default_output = os.path.join(INK_HOME, "articles")
+    output_dir = config.get("OUTPUT_DIR", default_output)
+    timestamp = make_timestamp()
+
+    try:
+        # 初始化 workspace
+        workspace = init_workspace(timestamp)
+        emit("progress", stage="agent", message=f"工作区: {workspace}")
+
+        # 写入上传文件文本
+        if file_contents:
+            input_path = os.path.join(workspace, "input", "uploaded_data.txt")
+            with open(input_path, "w", encoding="utf-8") as f:
+                f.write(file_contents)
+
+        # 复制原始文件到 workspace/input/（翻译场景需要原始二进制）
+        if file_formats:
+            for finfo in file_formats:
+                src_path = finfo.get("path", "")
+                if src_path and os.path.exists(src_path):
+                    try:
+                        dst_path = os.path.join(workspace, "input", finfo["name"])
+                        shutil.copy2(src_path, dst_path)
+                        logger.info("Copied file to workspace: %s", finfo["name"])
+                    except (IOError, OSError) as e:
+                        logger.warning("Failed to copy %s: %s", finfo["name"], e)
+
+        if not topic:
+            topic = "深度调研报告"
+
+        # 运行 Agent 循环
+        html_content = run_agent_loop(
+            topic=topic,
+            config=config,
+            emit_fn=emit,
+            workspace=workspace,
+            template_prompt=template_prompt,
+            file_contents=file_contents,
+            file_formats=file_formats,
+            max_turns=15,
+        )
+
+        if not html_content:
+            emit("error", code="AGENT_FAILED", message="Agent 未生成输出内容")
+            return
+
+        # 后处理：检查 workspace/output/ 下是否有原格式文件（翻译场景）
+        output_files = []
+        ws_output = os.path.join(workspace, "output")
+        if os.path.exists(ws_output):
+            for fname in os.listdir(ws_output):
+                if fname != "article.html" and not fname.endswith(".tmp"):
+                    output_files.append(fname)
+
+        # 缓存 Agent 原始输出
+        cache_file = os.path.join(CACHE_DIR, f"{timestamp}-agent-raw.html")
+        try:
+            with open(cache_file, "w", encoding="utf-8") as cf:
+                cf.write(html_content)
+        except OSError:
+            pass
+
+        emit("progress", stage="processing", message="正在处理文章...", percent=50)
+
+        # 提取 HTML
+        extracted = extract_html(html_content)
+        if extracted:
+            html_content = extracted
+
+        title = extract_title(html_content) or f"Agent 创作 {timestamp}"
+
+        emit("progress", stage="saving", message="正在保存文章...", percent=60)
+
+        # 添加页脚
+        html_content = append_footer(html_content)
+        if header_html:
+            html_content = header_html + html_content
+        if footer_html:
+            html_content = html_content + footer_html
+
+        filepath = save_article(timestamp, html_content, output_dir)
+
+        emit("progress", stage="cover", message="正在生成封面图...", percent=70)
+        today = datetime.now().strftime("%Y-%m-%d")
+        variation = pick_daily_variation(today)
+        cover_path = generate_cover_image(
+            timestamp, title, topic, output_dir,
+            cover_theme=variation.get("cover_theme"),
+        )
+
+        # 复制原格式文件到文章目录
+        article_dir = os.path.dirname(str(filepath))
+        file_type = "html"
+        for fname in output_files:
+            src = os.path.join(ws_output, fname)
+            dst = os.path.join(article_dir, fname)
+            shutil.copy2(src, dst)
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in (".docx", ".xlsx", ".pdf"):
+                file_type = ext[1:]  # docx/xlsx/pdf
+            logger.info("Copied output file: %s", fname)
+
+        # 保存元数据
+        metadata = {
+            "title": title,
+            "date": timestamp[:8],
+            "mode": "agent",
+            "topic": topic,
+            "status": "generated",
+            "provider": config.get("LLM_PROVIDER", "deepseek"),
+            "file_type": file_type,
+            "output_files": output_files,
+            "articles": [
+                {"title": title, "path": str(filepath),
+                 "cover": str(cover_path) if cover_path else ""}
+            ],
+        }
+        meta_path = os.path.join(article_dir, f"{timestamp}-metadata.json")
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+        emit("progress", stage="done", message="Agent 创作完成！", percent=100)
+        emit("result", status="success", title=title,
+             article_path=str(filepath), metadata_path=meta_path,
+             file_type=file_type, article_count=1)
+
+    except SystemExit as e:
+        logger.error("agent_generate SystemExit code=%s", e.code)
+        emit("error", code="AGENT_ERROR", message=f"Agent 异常退出 (code={e.code})")
+    except Exception as e:
+        logger.exception("agent_generate exception")
+        emit("error", code="AGENT_ERROR", message=str(e))
+
+
 def handle_validate_key(params):
     """验证 API Key 有效性：向对应平台发送轻量请求"""
     provider = params.get("provider", "")
@@ -642,6 +816,7 @@ def main():
     logger.info("action=%s", action)
     handlers = {
         "generate": handle_generate,
+        "agent_generate": handle_agent_generate,
         "validate_key": handle_validate_key,
         "list_articles": handle_list_articles,
         "get_config": handle_get_config,

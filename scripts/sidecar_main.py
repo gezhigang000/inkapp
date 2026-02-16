@@ -4,8 +4,16 @@ Sidecar 入口：接收 Tauri 前端命令，输出 JSON Lines 进度。
 用法: echo '{"action":"generate","mode":"daily"}' | python3 sidecar_main.py
 """
 import sys
-import json
 import os
+import io
+
+# Windows 下强制 UTF-8 编码，避免中文乱码
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
+import json
 import logging
 from datetime import datetime
 
@@ -461,6 +469,8 @@ def handle_extract_files(params):
                 text = _extract_pdf(fpath)
             elif ext in (".docx", ".doc"):
                 text = _extract_docx(fpath)
+            elif ext in (".pptx", ".ppt"):
+                text = _extract_pptx(fpath)
             elif ext in (".txt", ".md", ".csv"):
                 with open(fpath, "r", encoding="utf-8", errors="replace") as f:
                     text = f.read()
@@ -536,6 +546,32 @@ def _extract_docx(fpath):
         if rows:
             parts.append(f"[表格 {t_idx+1}]\n" + "\n".join(rows))
     return "\n".join(parts) if parts else "(空文档)"
+
+
+def _extract_pptx(fpath):
+    """提取 PPT 文件内容为文本"""
+    from pptx import Presentation
+    prs = Presentation(fpath)
+    parts = []
+    for i, slide in enumerate(prs.slides):
+        slide_parts = [f"--- 第 {i+1} 页 ---"]
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    text = para.text.strip()
+                    if text:
+                        slide_parts.append(text)
+            if shape.has_table:
+                table = shape.table
+                rows = []
+                for row in table.rows:
+                    cells = [cell.text.strip() for cell in row.cells]
+                    rows.append(" | ".join(cells))
+                if rows:
+                    slide_parts.append("[表格]\n" + "\n".join(rows))
+        if len(slide_parts) > 1:
+            parts.append("\n".join(slide_parts))
+    return "\n\n".join(parts) if parts else "(空 PPT)"
 
 
 def _cleanup_old_logs(max_days=7):

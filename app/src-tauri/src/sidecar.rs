@@ -61,15 +61,21 @@ pub async fn run_sidecar(
     // 优先使用 PyInstaller 打包的 sidecar 二进制（不依赖本地 Python）；
     // 如果 sidecar 不可用，回退到 python3 直接执行。
     let (mut rx, mut child) = match shell.sidecar("python-sidecar") {
-        Ok(cmd) => cmd.spawn().map_err(|e| {
-            format!("Failed to spawn sidecar binary: {}", e)
-        })?,
+        Ok(cmd) => cmd
+            .env("PYTHONIOENCODING", "utf-8")
+            .env("PYTHONUTF8", "1")
+            .spawn()
+            .map_err(|e| {
+                format!("Failed to spawn sidecar binary: {}", e)
+            })?,
         Err(_) => {
             let script_path = resolve_script_path(&app)
                 .unwrap_or_else(|| "scripts/sidecar_main.py".to_string());
             shell
                 .command("python-sidecar")
                 .args(&[&script_path])
+                .env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
                 .spawn()
                 .map_err(|e| format!("Failed to spawn python sidecar: {}", e))?
         }

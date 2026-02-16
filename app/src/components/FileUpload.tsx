@@ -16,7 +16,7 @@ interface FileUploadProps {
   onFilesChange: (files: UploadedFile[]) => void;
 }
 
-const SUPPORTED_EXTENSIONS = ["xlsx", "xls", "pdf", "docx", "doc", "txt", "md", "csv"];
+const SUPPORTED_EXTENSIONS = ["xlsx", "xls", "pdf", "docx", "doc", "pptx", "ppt", "txt", "md", "csv"];
 
 export type { UploadedFile };
 
@@ -131,7 +131,7 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
           background: "transparent",
         }}
       >
-        {extracting ? "正在解析文件..." : "点击选择文件（Excel / PDF / Word / TXT）"}
+        {extracting ? "正在解析文件..." : "点击选择文件（Excel / PDF / Word / PPT / TXT）"}
       </button>
 
       {files.length > 0 && (
@@ -150,7 +150,9 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
                       ? "📊"
                       : f.name.match(/\.docx?$/)
                         ? "📝"
-                        : "📄"}
+                        : f.name.match(/\.pptx?$/)
+                          ? "📽️"
+                          : "📄"}
                 </span>
                 <span className="truncate" style={{ color: "oklch(0.30 0.005 265)" }}>
                   {f.name}

@@ -335,6 +335,54 @@ const PPT_PROMPT = `你是一位资深的演示文稿策划专家和内容架构
 
 请只输出 HTML 内容。以 <section 开头，以 </section> 结尾。`;
 
+const TRANSLATE_PROMPT = `你是一位专业的多语言翻译专家和内容本地化顾问，精通中文、英文、日文、韩文、法文、德文、西班牙文等主流语言，擅长在保持原意的同时让译文自然流畅。
+
+## 任务
+
+请将用户上传的文档内容翻译为指定的目标语言。翻译方向/目标语言：「{{TOPIC}}」（请在主题中指定，如「翻译为英文」「翻译为日文」）。
+
+## 翻译原则
+
+1. **准确性优先**：忠实原文含义，不遗漏、不添加、不曲解
+2. **自然流畅**：译文要符合目标语言的表达习惯，不是逐字翻译
+3. **术语一致**：同一术语在全文中保持统一翻译
+4. **格式保留**：保持原文的结构层次（标题、列表、表格等）
+5. **文化适配**：涉及文化特定表达时，做适当的本地化处理
+
+## 翻译流程
+
+### 第一步：内容分析
+- 识别文档类型（报告/PPT/技术文档/商务文件）
+- 识别专业领域（技术/金融/医疗/法律/通用）
+- 列出关键术语并确定统一译法
+
+### 第二步：逐段翻译
+- 按原文结构逐段翻译
+- 标题单独翻译，保持简洁有力
+- 数据和数字保持原样
+- 专有名词首次出现时附注原文，如「Artificial Intelligence（AI）」
+
+### 第三步：译文润色
+- 检查上下文连贯性
+- 确保术语一致性
+- 优化长句，使其符合目标语言阅读习惯
+
+## 输出格式
+
+输出为简洁的 HTML 格式，重点是内容可读、易复制：
+- 使用最简洁的排版，不要花哨的样式，重点是翻译内容本身
+- 保持原文的结构层次（标题用 h2/h3，段落用 p，列表用 ul/ol）
+- 如果原文是 PPT 格式，每页用水平分割线分隔，标注「第 N 页」
+- 表格保持表格格式
+- 专业术语首次出现时用括号标注原文，如：人工智能（Artificial Intelligence）
+- 全部使用内联 CSS
+- 不要在顶部生成标题区域，直接从翻译内容开始
+- 使用 section 标签包裹
+- 正文字号 15px，行高 1.8，颜色 #333
+- 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
+
+请只输出 HTML 内容。HTML 以 <section 开头，以 </section> 结尾。`;
+
 export const BUILTIN_TEMPLATES: PromptTemplate[] = [
   {
     id: "deep-research",
@@ -403,6 +451,16 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     icon: "🎯",
     color: "oklch(0.55 0.15 340)",
     prompt: PPT_PROMPT,
+    inputType: "topic",
+    builtin: true,
+  },
+  {
+    id: "translate",
+    name: "文档翻译",
+    description: "上传文档翻译为指定语言",
+    icon: "🌐",
+    color: "oklch(0.55 0.15 180)",
+    prompt: TRANSLATE_PROMPT,
     inputType: "topic",
     builtin: true,
   },

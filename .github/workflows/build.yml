@@ -45,6 +45,7 @@ jobs:
             --hidden-import openpyxl \
             --hidden-import pdfplumber \
             --hidden-import docx \
+            --hidden-import pptx \
             --hidden-import PIL \
             --hidden-import oss2 \
             sidecar_main.py

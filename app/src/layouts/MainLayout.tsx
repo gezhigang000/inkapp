@@ -2,8 +2,9 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useGenerate } from "../hooks/useGenerate";
 
 const navItems = [
-  { path: "/", label: "创作", icon: "✏️" },
+  { path: "/", label: "首页", icon: "🏠" },
   { path: "/articles", label: "文章", icon: "📄" },
+  { path: "/logs", label: "日志", icon: "📋" },
   { path: "/settings", label: "设置", icon: "⚙️" },
   { path: "/models", label: "模型", icon: "🤖" },
 ];

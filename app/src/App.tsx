@@ -2,10 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ConfigProvider } from "./hooks/useConfig";
 import { GenerateProvider } from "./hooks/useGenerate";
 import MainLayout from "./layouts/MainLayout";
+import Home from "./pages/Home";
 import Create from "./pages/Create";
 import Models from "./pages/Models";
 import Articles from "./pages/Articles";
 import Settings from "./pages/Settings";
+import Logs from "./pages/Logs";
 
 function App() {
   return (
@@ -14,10 +16,12 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route element={<MainLayout />}>
-              <Route path="/" element={<Create />} />
+              <Route path="/" element={<Home />} />
+              <Route path="/create" element={<Create />} />
               <Route path="/models" element={<Models />} />
               <Route path="/articles" element={<Articles />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/logs" element={<Logs />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

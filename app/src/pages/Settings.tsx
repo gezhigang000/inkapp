@@ -69,7 +69,7 @@ export default function Settings() {
                   type="text"
                   value={getConfig("OUTPUT_DIR")}
                   onChange={(e) => updateConfig("OUTPUT_DIR", e.target.value)}
-                  placeholder="~/Ink/articles"
+                  placeholder="~/.ink/articles"
                   className="flex-1 px-3 h-9 text-sm rounded-[10px] placeholder:text-[oklch(0.50_0_0)]"
                   style={{
                     border: "1px solid oklch(0.91 0 0)",

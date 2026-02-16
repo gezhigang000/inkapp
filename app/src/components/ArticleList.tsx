@@ -1,3 +1,5 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
+
 interface ArticleMeta {
   id: string;
   title: string;
@@ -79,7 +81,7 @@ export default function ArticleList({
         >
           {article.coverPath ? (
             <img
-              src={article.coverPath}
+              src={convertFileSrc(article.coverPath)}
               alt={article.title}
               className="w-full h-36 object-cover rounded-[10px] mb-3"
             />

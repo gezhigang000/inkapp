@@ -28,8 +28,13 @@ if os.path.exists(PYLIB_DIR) and PYLIB_DIR not in sys.path:
 
 # ============================================================
 # 本地日志 & 缓存目录
+# 跨平台：Windows 用 %APPDATA%/Ink，macOS/Linux 用 ~/.ink
 # ============================================================
-INK_HOME = os.path.join(os.path.expanduser("~"), "Ink")
+if sys.platform == "win32":
+    _app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+    INK_HOME = os.path.join(_app_data, "Ink")
+else:
+    INK_HOME = os.path.join(os.path.expanduser("~"), ".ink")
 LOG_DIR = os.path.join(INK_HOME, "logs")
 CACHE_DIR = os.path.join(INK_HOME, "cache")
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -92,6 +97,7 @@ def handle_generate(params):
     topic = params.get("topic", "")
     video_url = params.get("video_url", "")
     file_contents = params.get("file_contents", "")  # 上传文件提取的文本
+    template_prompt = params.get("template_prompt", "")  # 模板自定义提示词
     header_html = params.get("header_html", "")  # 文章头部模板
     footer_html = params.get("footer_html", "")  # 文章尾部模板
     # OSS 云存储配置
@@ -99,7 +105,7 @@ def handle_generate(params):
     for k in ["oss_bucket", "oss_endpoint", "oss_access_key_id", "oss_access_key_secret"]:
         if params.get(k):
             oss_config[k] = params[k]
-    default_output = os.path.join(os.path.expanduser("~"), "Ink", "articles")
+    default_output = os.path.join(INK_HOME, "articles")
     output_dir = config.get("OUTPUT_DIR", default_output)
     timestamp = make_timestamp()
 
@@ -124,7 +130,8 @@ def handle_generate(params):
             effective_topic = (effective_topic or "数据分析") + file_context
 
         emit("progress", stage="generating", message="正在生成文章...", percent=20)
-        html_content = generate_article(topic=effective_topic, config=config)
+        html_content = generate_article(topic=effective_topic, config=config,
+                                        custom_prompt=template_prompt)
         if not html_content:
             emit("error", code="GENERATION_FAILED", message="文章生成失败，未获得输出")
             return
@@ -265,7 +272,7 @@ def handle_validate_key(params):
 def handle_list_articles(params):
     """扫描 output 目录，列出已生成的文章"""
     output_dir = params.get("output_dir",
-                            os.path.join(os.path.expanduser("~"), "Ink", "articles"))
+                            os.path.join(INK_HOME, "articles"))
     articles = []
 
     if os.path.exists(output_dir):
@@ -301,7 +308,7 @@ def handle_list_articles(params):
 def handle_get_config(params):
     """读取 JSON 配置文件"""
     config_path = params.get("config_path",
-                             os.path.expanduser("~/Ink/config.json"))
+                             os.path.join(INK_HOME, "config.json"))
     config = {}
     if os.path.exists(config_path):
         with open(config_path, "r", encoding="utf-8") as f:
@@ -313,7 +320,7 @@ def handle_get_config(params):
 def handle_save_config(params):
     """保存 JSON 配置文件"""
     config_path = params.get("config_path",
-                             os.path.expanduser("~/Ink/config.json"))
+                             os.path.join(INK_HOME, "config.json"))
     config_data = params.get("config", {})
 
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
@@ -343,7 +350,7 @@ def handle_delete_article(params):
 
     article_id = params.get("article_id", "")
     output_dir = params.get("output_dir",
-                            os.path.join(os.path.expanduser("~"), "Ink", "articles"))
+                            os.path.join(INK_HOME, "articles"))
 
     if not article_id:
         emit("error", code="MISSING_PARAMS", message="缺少 article_id")

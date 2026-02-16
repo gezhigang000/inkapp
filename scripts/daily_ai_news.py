@@ -230,27 +230,32 @@ def make_timestamp():
 # ============================================================
 
 
-def generate_article(topic=None, config=None):
-    """调用 LLM 生成文章。topic 指定时走深度调研，否则走日报模式。"""
+def generate_article(topic=None, config=None, custom_prompt=None):
+    """调用 LLM 生成文章。topic 指定时走深度调研，否则走日报模式。
+    custom_prompt: 模板自定义提示词，包含 {{TOPIC}} 占位符，覆盖默认提示词。
+    """
     if config is None:
         config = {}
     today = datetime.now().strftime("%Y-%m-%d")
 
     if topic:
-        return _generate_topic_research(topic, today, config)
+        return _generate_topic_research(topic, today, config, custom_prompt=custom_prompt)
     else:
-        return _generate_daily_news(today, config)
+        return _generate_daily_news(today, config, custom_prompt=custom_prompt)
 
 
-def _generate_topic_research(topic, today, config):
+def _generate_topic_research(topic, today, config, custom_prompt=None):
     """深度调研模式：围绕指定 topic 搜索官方资料做深度分析"""
     from llm_adapter import generate, LLMError
     from search_adapter import search_and_fetch
 
-    with open(TOPIC_PROMPT_FILE, "r", encoding="utf-8") as f:
-        prompt_template = f.read()
-
-    prompt = f"今天是 {today}。\n\n" + prompt_template.replace("{{TOPIC}}", topic)
+    if custom_prompt:
+        # 使用模板自定义提示词，替换 {{TOPIC}} 占位符
+        prompt = f"今天是 {today}。\n\n" + custom_prompt.replace("{{TOPIC}}", topic)
+    else:
+        with open(TOPIC_PROMPT_FILE, "r", encoding="utf-8") as f:
+            prompt_template = f.read()
+        prompt = f"今天是 {today}。\n\n" + prompt_template.replace("{{TOPIC}}", topic)
 
     provider = config.get("LLM_PROVIDER", "claude").lower()
     print(f"[1/4] 正在调用 AI 深度调研「{topic}」...")
@@ -286,13 +291,10 @@ def _generate_topic_research(topic, today, config):
     return html_content
 
 
-def _generate_daily_news(today, config):
+def _generate_daily_news(today, config, custom_prompt=None):
     """日报模式：搜索多家公司最新动态生成日报"""
     from llm_adapter import generate, LLMError
     from search_adapter import search_and_fetch
-
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
-        prompt_template = f.read()
 
     # 获取当天的内容变化组合
     variation = pick_daily_variation(today)
@@ -302,23 +304,30 @@ def _generate_daily_news(today, config):
     companies = list(variation["companies"])
     companies_str = "、".join(companies)
 
-    # 构建变化部分的 prompt
-    variation_parts = []
-    variation_parts.append(f"今天是 {today}。\n")
+    if custom_prompt:
+        # 使用模板自定义提示词
+        prompt = f"今天是 {today}。\n\n" + custom_prompt.replace("{{TOPIC}}", effective_topic or "AI")
+    else:
+        with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+            prompt_template = f.read()
 
-    if effective_topic:
-        variation_parts.append(f"本期聚焦方向：「{effective_topic}」")
-        variation_parts.append(
-            f"请围绕这个方向，从以下公司的最新动态中筛选最相关的内容来撰写文章。"
-            f"如果该方向近期没有足够新闻，可以适当扩展到技术进展、行业应用和趋势分析。\n"
-        )
+        # 构建变化部分的 prompt
+        variation_parts = []
+        variation_parts.append(f"今天是 {today}。\n")
 
-    variation_parts.append(f"本期关注的公司/团队：{companies_str}")
-    variation_parts.append(f"写作视角：{variation['angle']}")
-    variation_parts.append(f"文章体裁：{variation['structure']}")
-    variation_parts.append("")  # 空行分隔
+        if effective_topic:
+            variation_parts.append(f"本期聚焦方向：「{effective_topic}」")
+            variation_parts.append(
+                f"请围绕这个方向，从以下公司的最新动态中筛选最相关的内容来撰写文章。"
+                f"如果该方向近期没有足够新闻，可以适当扩展到技术进展、行业应用和趋势分析。\n"
+            )
 
-    prompt = "\n".join(variation_parts) + "\n" + prompt_template
+        variation_parts.append(f"本期关注的公司/团队：{companies_str}")
+        variation_parts.append(f"写作视角：{variation['angle']}")
+        variation_parts.append(f"文章体裁：{variation['structure']}")
+        variation_parts.append("")  # 空行分隔
+
+        prompt = "\n".join(variation_parts) + "\n" + prompt_template
 
     provider = config.get("LLM_PROVIDER", "claude").lower()
     topic_label = f"（方向: {effective_topic}）" if effective_topic else ""

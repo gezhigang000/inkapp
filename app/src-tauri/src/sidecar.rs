@@ -2,6 +2,18 @@ use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
+use std::path::PathBuf;
+
+/// Cross-platform INK_HOME: Windows → %APPDATA%/Ink, macOS/Linux → ~/.ink
+fn ink_home() -> PathBuf {
+    if cfg!(target_os = "windows") {
+        let appdata = std::env::var("APPDATA")
+            .unwrap_or_else(|_| dirs::home_dir().unwrap_or_default().to_string_lossy().to_string());
+        PathBuf::from(appdata).join("Ink")
+    } else {
+        dirs::home_dir().unwrap_or_default().join(".ink")
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SidecarEvent {
@@ -138,4 +150,92 @@ pub async fn write_temp_html(content: String) -> Result<String, String> {
     std::fs::write(&file_path, &content)
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
     Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn read_logs(lines: Option<usize>) -> Result<serde_json::Value, String> {
+    let max_lines = lines.unwrap_or(200);
+    let log_dir = ink_home().join("logs");
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let log_file = log_dir.join(format!("{}.log", today));
+
+    if !log_file.exists() {
+        return Ok(serde_json::json!({
+            "content": "暂无日志",
+            "log_dir": log_dir.to_string_lossy()
+        }));
+    }
+
+    let content = std::fs::read_to_string(&log_file)
+        .map_err(|e| format!("Failed to read log: {}", e))?;
+    let all_lines: Vec<&str> = content.lines().collect();
+    let start = if all_lines.len() > max_lines { all_lines.len() - max_lines } else { 0 };
+    let tail = all_lines[start..].join("\n");
+
+    Ok(serde_json::json!({
+        "content": tail,
+        "log_dir": log_dir.to_string_lossy()
+    }))
+}
+
+#[tauri::command]
+pub async fn list_articles_native(output_dir: Option<String>) -> Result<serde_json::Value, String> {
+    let dir = output_dir
+        .map(PathBuf::from)
+        .unwrap_or_else(|| ink_home().join("articles"));
+
+    let mut articles = Vec::new();
+
+    if !dir.exists() {
+        return Ok(serde_json::json!({ "articles": articles }));
+    }
+
+    let mut entries: Vec<_> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("Failed to read dir: {}", e))?
+        .filter_map(|e| e.ok())
+        .collect();
+    entries.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+
+    for entry in entries {
+        let path = entry.path();
+        // Look for metadata JSON in subdirectories
+        if path.is_dir() {
+            if let Some(meta) = find_metadata_in_dir(&path) {
+                let mut meta = meta;
+                meta["id"] = serde_json::Value::String(
+                    path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                );
+                articles.push(meta);
+            }
+        } else if path.extension().map_or(false, |e| e == "json")
+            && path.to_string_lossy().contains("-metadata")
+        {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(mut meta) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let stem = path.file_stem().unwrap_or_default().to_string_lossy()
+                        .replace("-metadata", "");
+                    meta["id"] = serde_json::Value::String(stem);
+                    articles.push(meta);
+                }
+            }
+        }
+    }
+
+    Ok(serde_json::json!({ "articles": articles }))
+}
+
+fn find_metadata_in_dir(dir: &std::path::Path) -> Option<serde_json::Value> {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.ends_with("-metadata.json") || name == "metadata.json" {
+                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                    if let Ok(meta) = serde_json::from_str::<serde_json::Value>(&content) {
+                        return Some(meta);
+                    }
+                }
+            }
+        }
+    }
+    None
 }

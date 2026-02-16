@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { SidecarEvent } from "../components/GenerateProgress";
-
-type Mode = "daily" | "topic" | "video";
+import type { PromptTemplate } from "../data/prompt-templates";
 
 interface ModeParams {
   topic?: string;
@@ -21,9 +20,9 @@ interface GenerateContextValue {
   events: SidecarEvent[];
   isRunning: boolean;
   result: GenerateResult | null;
-  mode: Mode;
+  selectedTemplate: PromptTemplate | null;
   params: ModeParams;
-  setMode: (mode: Mode) => void;
+  setSelectedTemplate: (t: PromptTemplate | null) => void;
   setParams: (params: ModeParams) => void;
   startGenerate: (payload: Record<string, unknown>) => Promise<void>;
   clearResult: () => void;
@@ -35,7 +34,7 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<SidecarEvent[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<GenerateResult | null>(null);
-  const [mode, setMode] = useState<Mode>("topic");
+  const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
   const [params, setParams] = useState<ModeParams>({});
   const runningRef = useRef(false);
 
@@ -64,7 +63,7 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
         (event) => {
           const data = event.payload;
           setEvents((prev) => [...prev, data]);
-          if (data.type === "result" && data.status === "success") {
+          if (data.type === "result" && data.status === "success" && data.article_path) {
             readArticleFile(data.article_path || "").then((html) => {
               setResult({
                 title: data.title || "未命名文章",
@@ -100,7 +99,7 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <GenerateContext value={{ events, isRunning, result, mode, params, setMode, setParams, startGenerate, clearResult }}>
+    <GenerateContext value={{ events, isRunning, result, selectedTemplate, params, setSelectedTemplate, setParams, startGenerate, clearResult }}>
       {children}
     </GenerateContext>
   );

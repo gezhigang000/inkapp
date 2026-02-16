@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
 
 interface ArticlePreviewProps {
@@ -116,7 +117,7 @@ export default function ArticlePreview({ title, htmlContent, coverPath }: Articl
           <p className="text-xs mb-2" style={{ color: "oklch(0.50 0 0)" }}>
             封面图
           </p>
-          <img src={coverPath} alt="封面" className="max-h-48 rounded-[10px] object-cover" />
+          <img src={convertFileSrc(coverPath)} alt="封面" className="max-h-48 rounded-[10px] object-cover" />
         </div>
       )}
 

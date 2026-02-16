@@ -13,43 +13,32 @@ export default function Articles() {
   const loadArticles = async () => {
     setLoading(true);
     try {
-      const result = await invoke<string>("run_sidecar", {
-        commandJson: JSON.stringify({ action: "list_articles" }),
-      });
-      for (const line of result.split("\n")) {
-        try {
-          const parsed = JSON.parse(line);
-          if (parsed.type === "result" && parsed.articles) {
-            const mapped: ArticleMeta[] = parsed.articles.map(
-              (a: Record<string, unknown>) => ({
-                id: a.id as string,
-                title: (a.title as string) || "未命名",
-                date: (a.date as string) || "",
-                mode: (a.mode as string) || "daily",
-                status:
-                  (a.status as string) === "published"
-                    ? ("published" as const)
-                    : ("generated" as const),
-                articlePath:
-                  (
-                    (a.articles as Record<string, string>[] | undefined)?.[0]
-                      ?.path as string
-                  ) || "",
-                coverPath:
-                  (
-                    (a.articles as Record<string, string>[] | undefined)?.[0]
-                      ?.cover as string
-                  ) || undefined,
-              })
-            );
-            setArticles(mapped);
-          }
-        } catch {
-          /* skip non-JSON lines */
-        }
-      }
+      const result = await invoke<{ articles: Record<string, unknown>[] }>("list_articles_native");
+      const mapped: ArticleMeta[] = (result.articles || []).map(
+        (a) => ({
+          id: a.id as string,
+          title: (a.title as string) || "未命名",
+          date: (a.date as string) || "",
+          mode: (a.mode as string) || "daily",
+          status:
+            (a.status as string) === "published"
+              ? ("published" as const)
+              : ("generated" as const),
+          articlePath:
+            (
+              (a.articles as Record<string, string>[] | undefined)?.[0]
+                ?.path as string
+            ) || "",
+          coverPath:
+            (
+              (a.articles as Record<string, string>[] | undefined)?.[0]
+                ?.cover as string
+            ) || undefined,
+        })
+      );
+      setArticles(mapped);
     } catch {
-      // sidecar 不可用时显示空列表
+      // fallback: empty list
     } finally {
       setLoading(false);
     }

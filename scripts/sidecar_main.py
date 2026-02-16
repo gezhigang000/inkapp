@@ -108,6 +108,7 @@ def handle_generate(params):
     video_url = params.get("video_url", "")
     file_contents = params.get("file_contents", "")  # 上传文件提取的文本
     template_prompt = params.get("template_prompt", "")  # 模板自定义提示词
+    file_formats = params.get("file_formats", None)  # 上传文件格式信息
     header_html = params.get("header_html", "")  # 文章头部模板
     footer_html = params.get("footer_html", "")  # 文章尾部模板
     # OSS 云存储配置
@@ -209,6 +210,22 @@ def handle_generate(params):
                 emit("progress", stage="uploading",
                      message=f"OSS 同步失败（不影响本地文件）: {e}")
 
+        # 格式转换：如果有上传文件，生成与上传文件相同格式的输出
+        file_type = "html"
+        converted_files = []
+        if file_formats:
+            target_ext = file_formats[0].get("ext", "").lower()
+            if target_ext and target_ext not in ("txt", "md", "csv"):
+                article_dir = os.path.dirname(filepaths[0]) if filepaths else output_dir
+                emit("progress", stage="converting",
+                     message=f"正在转换为 .{target_ext} 格式...", percent=85)
+                converted = _convert_html_to_format(
+                    html_content, target_ext, article_dir)
+                if converted:
+                    file_type = target_ext
+                    converted_files.append(os.path.basename(converted))
+                    logger.info("Converted to %s: %s", target_ext, converted)
+
         # 保存元数据
         meta_dir = os.path.dirname(filepaths[0]) if filepaths else output_dir
         metadata = {
@@ -218,6 +235,8 @@ def handle_generate(params):
             "topic": effective_topic or "",
             "status": "generated",
             "provider": config.get("LLM_PROVIDER", "claude"),
+            "file_type": file_type,
+            "output_files": converted_files,
             "articles": [
                 {"title": articles[i][0], "path": filepaths[i], "cover": img_paths[i]}
                 for i in range(len(articles))
@@ -230,7 +249,7 @@ def handle_generate(params):
         emit("progress", stage="done", message="生成完成！", percent=100)
         emit("result", status="success", title=title,
              article_path=filepaths[0], metadata_path=meta_path,
-             article_count=len(articles))
+             file_type=file_type, article_count=len(articles))
 
     except SystemExit as e:
         logger.error("generate SystemExit code=%s", e.code)
@@ -335,6 +354,19 @@ def handle_agent_generate(params):
             for fname in os.listdir(ws_output):
                 if fname != "article.html" and not fname.endswith(".tmp"):
                     output_files.append(fname)
+
+        # 如果 Agent 没有生成原格式文件，sidecar 自动从 HTML 转换
+        if file_formats and not output_files:
+            target_ext = file_formats[0].get("ext", "").lower()
+            if target_ext and html_content:
+                emit("progress", stage="converting",
+                     message=f"正在转换为 .{target_ext} 格式...")
+                converted = _convert_html_to_format(
+                    html_content, target_ext, ws_output)
+                if converted:
+                    output_files.append(os.path.basename(converted))
+                    logger.info("Auto-converted HTML to %s: %s",
+                                target_ext, converted)
 
         # 缓存 Agent 原始输出
         cache_file = os.path.join(CACHE_DIR, f"{timestamp}-agent-raw.html")
@@ -871,6 +903,144 @@ def handle_publish_wechat(params):
     except Exception as e:
         logger.exception("publish_wechat error")
         emit("error", code="PUBLISH_ERROR", message=str(e))
+
+
+def _convert_html_to_format(html_content, target_ext, output_dir):
+    """将 HTML 内容转换为目标格式文件（PDF/DOCX/XLSX）。
+
+    作为 Agent 未能生成原格式文件时的兜底方案。
+    """
+    import re
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 从 HTML 提取纯文本（保留段落结构）
+    def html_to_text(html):
+        # 替换 <br> 为换行
+        text = re.sub(r'<br\s*/?>', '\n', html)
+        # 替换块级标签为换行
+        text = re.sub(r'</(p|div|section|h[1-6]|li|tr)>', '\n', text)
+        # 去掉所有 HTML 标签
+        text = re.sub(r'<[^>]+>', '', text)
+        # 解码 HTML 实体
+        import html as html_mod
+        text = html_mod.unescape(text)
+        # 清理多余空行
+        lines = [line.strip() for line in text.split('\n')]
+        return '\n'.join(line for line in lines if line)
+
+    text = html_to_text(html_content)
+    if not text.strip():
+        return None
+
+    try:
+        if target_ext == "pdf":
+            return _text_to_pdf(text, output_dir)
+        elif target_ext in ("docx", "doc"):
+            return _text_to_docx(text, output_dir)
+        elif target_ext in ("xlsx", "xls"):
+            return _text_to_xlsx(text, output_dir)
+    except Exception as e:
+        logger.error("Format conversion failed (%s): %s", target_ext, e)
+    return None
+
+
+def _text_to_pdf(text, output_dir):
+    """用 reportlab 将文本转为 PDF，支持中文。"""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import platform
+
+    out_path = os.path.join(output_dir, "translated.pdf")
+
+    # 注册中文字体
+    font_candidates = []
+    if platform.system() == "Darwin":
+        font_candidates = [
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+            "/Library/Fonts/Arial Unicode.ttf",
+        ]
+    elif platform.system() == "Windows":
+        font_candidates = [
+            "C:/Windows/Fonts/msyh.ttc",
+            "C:/Windows/Fonts/simsun.ttc",
+        ]
+    else:
+        font_candidates = [
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        ]
+
+    font_name = "ChineseFont"
+    registered = False
+    for fp in font_candidates:
+        if os.path.exists(fp):
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, fp))
+                registered = True
+                break
+            except Exception:
+                continue
+
+    used_font = font_name if registered else "Helvetica"
+    c = canvas.Canvas(out_path, pagesize=A4)
+    width, height = A4
+    font_size = 11
+    line_height = font_size * 1.8
+    margin_x = 50
+    margin_top = 50
+    margin_bottom = 50
+    max_width = width - 2 * margin_x
+    y = height - margin_top
+
+    c.setFont(used_font, font_size)
+
+    for line in text.split("\n"):
+        # 自动换行：按字符宽度拆分长行
+        while line:
+            # 估算一行能放多少字符（中文约 font_size 宽，英文约 font_size*0.6）
+            chars_per_line = int(max_width / (font_size * 0.6))
+            chunk = line[:chars_per_line]
+            line = line[chars_per_line:]
+
+            if y < margin_bottom:
+                c.showPage()
+                c.setFont(used_font, font_size)
+                y = height - margin_top
+
+            c.drawString(margin_x, y, chunk)
+            y -= line_height
+
+    c.save()
+    return out_path
+
+
+def _text_to_docx(text, output_dir):
+    """用 python-docx 将文本转为 Word 文档。"""
+    from docx import Document
+    out_path = os.path.join(output_dir, "translated.docx")
+    doc = Document()
+    for line in text.split("\n"):
+        if line.strip():
+            doc.add_paragraph(line)
+    doc.save(out_path)
+    return out_path
+
+
+def _text_to_xlsx(text, output_dir):
+    """用 openpyxl 将文本转为 Excel（每行一个单元格）。"""
+    from openpyxl import Workbook
+    out_path = os.path.join(output_dir, "translated.xlsx")
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Translation"
+    for i, line in enumerate(text.split("\n"), 1):
+        if line.strip():
+            ws.cell(row=i, column=1, value=line)
+    wb.save(out_path)
+    return out_path
 
 
 def main():

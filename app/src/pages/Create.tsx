@@ -112,8 +112,8 @@ export default function Create() {
       .join("\n\n");
     if (fileTexts) payload.file_contents = fileTexts;
 
-    // Agent 模式：传递上传文件的原始格式和路径
-    if (selectedTemplate?.agentMode && uploadedFiles.length > 0) {
+    // 传递上传文件的格式和路径（用于格式转换）
+    if (uploadedFiles.length > 0) {
       payload.file_formats = uploadedFiles.map((f) => ({
         name: f.name,
         ext: f.name.split(".").pop()?.toLowerCase() || "",

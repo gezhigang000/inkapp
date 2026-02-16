@@ -532,13 +532,10 @@ def run_agent_loop(topic, config, emit_fn, workspace,
         user_content += "\n"
 
     if file_formats:
-        # 翻译/文件处理场景：强调输出原格式
-        exts = [f.get("ext", "").lower() for f in file_formats]
-        ext_str = ", ".join(f".{e}" for e in exts if e)
+        # 文件处理场景：Agent 只需生成 HTML，格式转换由 sidecar 后处理
         user_content += (
-            f"请开始工作。上传文件格式为 {ext_str}，"
-            "你必须用 run_python 生成与上传文件相同格式的输出文件到 output/ 目录，"
-            "同时生成 output/article.html 作为 HTML 预览版。"
+            "请开始工作。用 read_file 读取上传文件，处理后用 write_file "
+            "将结果写入 output/article.html。"
         )
     else:
         user_content += (

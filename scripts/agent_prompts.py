@@ -90,112 +90,21 @@ def get_agent_system_prompt(template_prompt="", file_formats=None):
 - 引用原文用斜体引用框样式
 - 文末附参考来源（附原始链接）"""
 
-    # 翻译/文件处理场景：强制输出原格式
+    # 翻译/文件处理场景：告知 Agent 只需生成 HTML，格式转换由系统完成
     if file_formats:
         exts = [f.get("ext", "").lower() for f in file_formats]
-        has_docx = any(e in ("docx", "doc") for e in exts)
-        has_xlsx = any(e in ("xlsx", "xls") for e in exts)
-        has_pdf = any(e == "pdf" for e in exts)
+        ext_list = ", ".join(f".{e}" for e in exts if e)
+        base_prompt += f"""
 
-        if has_docx or has_xlsx or has_pdf:
-            ext_list = ", ".join(f".{e}" for e in exts if e)
-            base_prompt += f"""
+## 文件处理说明
 
-## ⚠️ 最高优先级：输出文件格式必须与上传文件一致
+用户上传了 {ext_list} 格式的文件，已复制到 input/ 目录。
 
-用户上传了 {ext_list} 格式的文件。你**必须**：
+你的任务：
+1. 用 read_file 读取 input/ 下的文件内容
+2. 按照模板要求处理内容（翻译/分析等）
+3. 将处理结果用 write_file 写入 output/article.html
 
-1. 用 read_file 读取 input/ 下的原始文件
-2. 用 run_python 生成**与上传文件相同格式**的输出文件到 output/ 目录
-3. 同时生成 output/article.html 作为 HTML 预览版
-
-**禁止只输出 HTML 而不输出原格式文件。这是硬性要求。**"""
-
-            if has_docx:
-                base_prompt += """
-
-### Word (.docx) 输出方法
-```python
-from docx import Document
-doc = Document()
-doc.add_heading('标题', 0)
-doc.add_paragraph('翻译内容...')
-doc.save('output/translated.docx')
-```"""
-
-            if has_xlsx:
-                base_prompt += """
-
-### Excel (.xlsx) 输出方法
-```python
-from openpyxl import Workbook
-wb = Workbook()
-ws = wb.active
-ws['A1'] = '翻译后的表头'
-wb.save('output/translated.xlsx')
-```"""
-
-            if has_pdf:
-                base_prompt += """
-
-### PDF (.pdf) 输出方法
-使用 reportlab 生成 PDF，中文必须注册字体：
-```python
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-import os, platform
-
-# 注册中文字体（按平台查找系统字体）
-font_paths = []
-if platform.system() == 'Darwin':
-    font_paths = [
-        '/System/Library/Fonts/PingFang.ttc',
-        '/System/Library/Fonts/STHeiti Light.ttc',
-        '/Library/Fonts/Arial Unicode.ttf',
-    ]
-elif platform.system() == 'Windows':
-    font_paths = [
-        'C:/Windows/Fonts/msyh.ttc',
-        'C:/Windows/Fonts/simsun.ttc',
-    ]
-else:
-    font_paths = [
-        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
-        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
-    ]
-
-font_name = 'ChineseFont'
-registered = False
-for fp in font_paths:
-    if os.path.exists(fp):
-        try:
-            pdfmetrics.registerFont(TTFont(font_name, fp))
-            registered = True
-            break
-        except Exception:
-            continue
-
-c = canvas.Canvas('output/translated.pdf', pagesize=A4)
-width, height = A4
-y = height - 50
-font_size = 12
-line_height = font_size * 1.5
-used_font = font_name if registered else 'Helvetica'
-
-# 逐行写入翻译内容
-for line in translated_lines:
-    if y < 50:  # 换页
-        c.showPage()
-        c.setFont(used_font, font_size)
-        y = height - 50
-    c.setFont(used_font, font_size)
-    c.drawString(50, y, line)
-    y -= line_height
-
-c.save()
-```
-注意：translated_lines 是翻译后的文本按行分割的列表。"""
+**重要：你只需要生成 HTML 输出。系统会自动将 HTML 转换为与上传文件相同的格式（{ext_list}）。不要尝试用 run_python 生成 PDF/DOCX/XLSX 文件。**"""
 
     return base_prompt

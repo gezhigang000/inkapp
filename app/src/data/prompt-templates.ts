@@ -323,7 +323,5 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     prompt: TRANSLATE_PROMPT,
     inputType: "topic",
     builtin: true,
-    agentMode: true,
-    maxTurns: 5,
   },
 ];

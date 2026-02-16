@@ -50,6 +50,14 @@ jobs:
             --hidden-import pptx \
             --hidden-import PIL \
             --hidden-import oss2 \
+            --hidden-import agent_loop \
+            --hidden-import agent_prompts \
+            --hidden-import reportlab \
+            --hidden-import reportlab.lib.pagesizes \
+            --hidden-import reportlab.pdfgen \
+            --hidden-import pandas \
+            --hidden-import numpy \
+            --hidden-import matplotlib \
             sidecar_main.py
           mkdir -p ../app/src-tauri/binaries
           cp dist/python-sidecar* ../app/src-tauri/binaries/${{ matrix.sidecar_name }}

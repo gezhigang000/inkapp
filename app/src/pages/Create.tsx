@@ -17,7 +17,7 @@ const inputStyle = {
 export default function Create() {
   const navigate = useNavigate();
   const { getConfig } = useConfig();
-  const { events, isRunning, result, selectedTemplate, params, setParams, startGenerate } = useGenerate();
+  const { events, isRunning, result, selectedTemplate, params, setParams, startGenerate, stopGenerate } = useGenerate();
   const [selectedProvider, setSelectedProvider] = useState(
     () => getConfig("selected_provider") || "deepseek"
   );
@@ -210,6 +210,18 @@ export default function Create() {
             </div>
           )}
           <GenerateProgress events={events} isRunning={isRunning} />
+          {isRunning && (
+            <button
+              onClick={stopGenerate}
+              className="mt-2 px-4 h-8 text-xs font-medium rounded-[10px] cursor-pointer transition-[background-color,opacity] duration-150"
+              style={{
+                background: "oklch(0.63 0.14 52)",
+                color: "oklch(0.98 0.002 90)",
+              }}
+            >
+              中断创作
+            </button>
+          )}
         </>
       )}
 

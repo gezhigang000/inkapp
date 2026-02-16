@@ -3,6 +3,10 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 use std::path::PathBuf;
+use std::sync::Mutex;
+
+/// 全局存储当前运行的 sidecar 子进程 PID，用于强制中断
+static SIDECAR_PID: Mutex<Option<u32>> = Mutex::new(None);
 
 /// Cross-platform INK_HOME: Windows → %APPDATA%/Ink, macOS/Linux → ~/.ink
 fn ink_home() -> PathBuf {
@@ -89,6 +93,9 @@ pub async fn run_sidecar(
     };
 
     // Write the full JSON payload to stdin.
+    let pid = child.pid();
+    *SIDECAR_PID.lock().unwrap() = Some(pid);
+
     child
         .write(command_json.as_bytes())
         .map_err(|e| format!("Failed to write to stdin: {}", e))?;
@@ -133,6 +140,7 @@ pub async fn run_sidecar(
                 }
             }
             CommandEvent::Terminated(status) => {
+                *SIDECAR_PID.lock().unwrap() = None;
                 if status.code.unwrap_or(-1) != 0 {
                     return Err(format!(
                         "Sidecar exited with code: {:?}",
@@ -146,6 +154,27 @@ pub async fn run_sidecar(
     }
 
     Ok(output_lines.join("\n"))
+}
+
+#[tauri::command]
+pub async fn stop_sidecar() -> Result<String, String> {
+    let pid = SIDECAR_PID.lock().unwrap().take();
+    match pid {
+        Some(pid) => {
+            #[cfg(unix)]
+            {
+                unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            }
+            #[cfg(windows)]
+            {
+                let _ = std::process::Command::new("taskkill")
+                    .args(&["/PID", &pid.to_string(), "/F"])
+                    .output();
+            }
+            Ok(format!("Stopped sidecar (PID: {})", pid))
+        }
+        None => Ok("No sidecar running".to_string()),
+    }
 }
 
 #[tauri::command]

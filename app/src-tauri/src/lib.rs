@@ -8,6 +8,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             sidecar::run_sidecar,
+            sidecar::stop_sidecar,
             sidecar::write_temp_html,
             sidecar::read_logs,
             sidecar::list_articles_native,

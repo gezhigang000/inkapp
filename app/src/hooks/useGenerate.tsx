@@ -28,6 +28,7 @@ interface GenerateContextValue {
   setSelectedTemplate: (t: PromptTemplate | null) => void;
   setParams: (params: ModeParams) => void;
   startGenerate: (payload: Record<string, unknown>) => Promise<void>;
+  stopGenerate: () => Promise<void>;
   clearResult: () => void;
 }
 
@@ -104,8 +105,17 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
     setResult(null);
   }, []);
 
+  const stopGenerate = useCallback(async () => {
+    try {
+      await invoke("stop_sidecar");
+      setEvents((prev) => [...prev, { type: "progress", stage: "log", message: "已手动中断" }]);
+    } catch (err) {
+      console.error("Failed to stop sidecar:", err);
+    }
+  }, []);
+
   return (
-    <GenerateContext value={{ events, isRunning, result, selectedTemplate, params, setSelectedTemplate, setParams, startGenerate, clearResult }}>
+    <GenerateContext value={{ events, isRunning, result, selectedTemplate, params, setSelectedTemplate, setParams, startGenerate, stopGenerate, clearResult }}>
       {children}
     </GenerateContext>
   );

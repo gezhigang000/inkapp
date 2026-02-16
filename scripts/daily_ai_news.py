@@ -279,14 +279,9 @@ def _generate_topic_research(topic, today, config, custom_prompt=None):
 
     html_content = extract_html(output)
     if not html_content:
-        # 检测是否返回了总结描述而非实际文章
-        if "文章已完成" in output or "整篇文章围绕" in output or "<section" not in output:
-            print("[错误] AI 返回了文章描述/总结而非实际 HTML 文章内容")
-            print("       输出前 200 字:", output[:200])
-            print("       请重新运行脚本重试")
-            sys.exit(1)
-        print("[警告] 未能提取到标准 HTML，使用完整输出")
-        html_content = output
+        # LLM 返回了 Markdown 而非 HTML，尝试转换
+        print("[警告] AI 未返回 HTML 格式，自动转换 Markdown 为 HTML")
+        html_content = _markdown_to_html(output)
 
     return html_content
 
@@ -357,8 +352,8 @@ def _generate_daily_news(today, config, custom_prompt=None):
 
     html_content = extract_html(output)
     if not html_content:
-        print("[警告] 未能提取到标准 HTML，使用完整输出")
-        html_content = output
+        print("[警告] AI 未返回 HTML 格式，自动转换 Markdown 为 HTML")
+        html_content = _markdown_to_html(output)
 
     return html_content
 
@@ -376,6 +371,66 @@ def extract_html(text):
         return match.group(1)
 
     return None
+
+
+def _markdown_to_html(text):
+    """将 Markdown 文本转换为微信公众号风格的内联样式 HTML"""
+    lines = text.strip().split("\n")
+    html_parts = []
+    in_list = False
+    in_code = False
+    code_buf = []
+    font = "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif"
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            if in_code:
+                html_parts.append(
+                    f'<pre style="background:#1e1e1e;color:#d4d4d4;padding:16px;'
+                    f'border-radius:8px;font-size:13px;overflow-x:auto;'
+                    f'font-family:Menlo,monospace;margin:12px 0;">'
+                    + "\n".join(code_buf) + '</pre>')
+                code_buf = []
+                in_code = False
+            else:
+                in_code = True
+            continue
+        if in_code:
+            code_buf.append(stripped)
+            continue
+        if in_list and not stripped.startswith(("- ", "* ")):
+            html_parts.append("</ul>")
+            in_list = False
+        if stripped.startswith("### "):
+            t = _inline_md(stripped[4:].strip().strip("*"))
+            html_parts.append(f'<h3 style="font-size:17px;font-weight:700;color:#222;margin:20px 0 8px;font-family:{font};">{t}</h3>')
+        elif stripped.startswith("## "):
+            t = _inline_md(stripped[3:].strip().strip("*"))
+            html_parts.append(f'<h2 style="font-size:19px;font-weight:700;color:#111;margin:24px 0 10px;font-family:{font};">{t}</h2>')
+        elif stripped.startswith("# "):
+            t = _inline_md(stripped[2:].strip().strip("*"))
+            html_parts.append(f'<h1 style="font-size:22px;font-weight:700;color:#111;margin:28px 0 12px;font-family:{font};">{t}</h1>')
+        elif stripped.startswith(("- ", "* ")):
+            if not in_list:
+                html_parts.append('<ul style="padding-left:20px;margin:8px 0;">')
+                in_list = True
+            html_parts.append(f'<li style="font-size:15px;line-height:1.8;color:#333;margin:4px 0;font-family:{font};">{_inline_md(stripped[2:].strip())}</li>')
+        elif stripped.startswith("---"):
+            html_parts.append('<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">')
+        elif stripped:
+            html_parts.append(f'<p style="font-size:15px;line-height:1.8;color:#333;margin:10px 0;font-family:{font};">{_inline_md(stripped)}</p>')
+    if in_list:
+        html_parts.append("</ul>")
+    return '<section style="padding:10px 0;">' + "\n".join(html_parts) + "</section>"
+
+
+def _inline_md(text):
+    """处理行内 Markdown：加粗、斜体、行内代码"""
+    text = re.sub(r"\*\*(.+?)\*\*", r'<strong style="color:#111;">\1</strong>', text)
+    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
+    text = re.sub(r"`(.+?)`", r'<code style="background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:13px;color:#d63384;">\1</code>', text)
+    return text
 
 
 def extract_title(html_content):

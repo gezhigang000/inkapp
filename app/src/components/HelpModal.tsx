@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ModelProvider, SearchProvider } from "../data/model-guides";
 
 type GuideData = ModelProvider["guide"] | SearchProvider["guide"];
@@ -14,6 +15,15 @@ function isModelGuide(guide: GuideData): guide is ModelProvider["guide"] {
 }
 
 export default function HelpModal({ open, onClose, providerName, guide }: HelpModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (

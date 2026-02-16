@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useConfig } from "../hooks/useConfig";
@@ -12,7 +12,7 @@ import ArticlePreview from "../components/ArticlePreview";
 type Mode = "daily" | "topic" | "video";
 
 export default function Create() {
-  const { config, getConfig } = useConfig();
+  const { getConfig } = useConfig();
   const [selectedProvider, setSelectedProvider] = useState(
     () => getConfig("selected_provider") || "deepseek"
   );
@@ -25,6 +25,14 @@ export default function Create() {
     htmlContent: string;
     coverPath?: string;
   } | null>(null);
+  const unlistenRef = useRef<(() => void) | null>(null);
+
+  // 组件卸载时清理事件监听
+  useEffect(() => {
+    return () => {
+      unlistenRef.current?.();
+    };
+  }, []);
 
   const canGenerate = useCallback(() => {
     if (isRunning) return false;
@@ -33,7 +41,27 @@ export default function Create() {
     return true;
   }, [isRunning, mode, params]);
 
+  // 获取当前 provider 需要的 Key
+  const getProviderKeyName = (providerId: string): string | undefined => {
+    const provider = MODEL_PROVIDERS.find((p) => p.id === providerId);
+    if (!provider) return undefined;
+    const pwdKey = provider.configKeys.find((ck) => ck.type === "password");
+    return pwdKey?.key;
+  };
+
   const handleGenerate = async () => {
+    // 校验 API Key 已配置
+    const keyName = getProviderKeyName(selectedProvider);
+    if (keyName && !getConfig(keyName)) {
+      setEvents([
+        {
+          type: "error",
+          message: `请先在「模型配置」页面配置 ${selectedProvider} 的 API Key`,
+        },
+      ]);
+      return;
+    }
+
     setEvents([]);
     setResult(null);
     setIsRunning(true);
@@ -44,11 +72,14 @@ export default function Create() {
         (event) => {
           const data = event.payload;
           setEvents((prev) => [...prev, data]);
-          if (data.type === "result") {
-            setResult({
-              title: data.title || "未命名文章",
-              htmlContent: data.article_path || "",
-              coverPath: undefined,
+          if (data.type === "result" && data.status === "success") {
+            // 读取生成的文章文件内容
+            readArticleFile(data.article_path || "").then((html) => {
+              setResult({
+                title: data.title || "未命名文章",
+                htmlContent: html,
+                coverPath: undefined,
+              });
             });
           }
           if (data.type === "error" || data.type === "result") {
@@ -56,19 +87,26 @@ export default function Create() {
           }
         }
       );
+      unlistenRef.current = unlisten;
+
+      // 只传当前 provider 相关的 Key
+      const payload: Record<string, unknown> = {
+        action: "generate",
+        mode,
+        topic: params.topic || undefined,
+        video_url: params.videoUrl || undefined,
+        provider: selectedProvider,
+      };
+      if (keyName) {
+        payload[keyName] = getConfig(keyName);
+      }
 
       await invoke("run_sidecar", {
-        commandJson: JSON.stringify({
-          action: "generate",
-          mode,
-          topic: params.topic || undefined,
-          video_url: params.videoUrl || undefined,
-          provider: selectedProvider,
-          ...config,
-        }),
+        commandJson: JSON.stringify(payload),
       });
 
       unlisten();
+      unlistenRef.current = null;
     } catch (err) {
       setEvents((prev) => [
         ...prev,
@@ -78,6 +116,8 @@ export default function Create() {
         },
       ]);
       setIsRunning(false);
+      unlistenRef.current?.();
+      unlistenRef.current = null;
     }
   };
 
@@ -134,4 +174,26 @@ export default function Create() {
       )}
     </div>
   );
+}
+
+async function readArticleFile(filePath: string): Promise<string> {
+  if (!filePath) return "<p>文章路径为空</p>";
+  try {
+    const result = await invoke<string>("run_sidecar", {
+      commandJson: JSON.stringify({
+        action: "read_file",
+        path: filePath,
+      }),
+    });
+    // 从 JSON Lines 输出中提取 content
+    for (const line of result.split("\n")) {
+      try {
+        const parsed = JSON.parse(line);
+        if (parsed.type === "result" && parsed.content) return parsed.content;
+      } catch { /* skip non-JSON lines */ }
+    }
+    return "<p>无法读取文章内容</p>";
+  } catch {
+    return "<p>读取文章失败</p>";
+  }
 }

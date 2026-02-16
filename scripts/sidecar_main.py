@@ -186,18 +186,24 @@ def handle_list_articles(params):
                 for fname in os.listdir(entry_path):
                     if fname.endswith("-metadata.json") or fname == "metadata.json":
                         meta_path = os.path.join(entry_path, fname)
-                        with open(meta_path, "r", encoding="utf-8") as f:
-                            meta = json.load(f)
-                            meta["id"] = entry
-                            articles.append(meta)
+                        try:
+                            with open(meta_path, "r", encoding="utf-8") as f:
+                                meta = json.load(f)
+                                meta["id"] = entry
+                                articles.append(meta)
+                        except (json.JSONDecodeError, IOError):
+                            pass  # 跳过损坏的 metadata 文件
                         break
             # 也支持直接放在 output_dir 下的 metadata 文件
             elif entry.endswith("-metadata.json"):
                 meta_path = os.path.join(output_dir, entry)
-                with open(meta_path, "r", encoding="utf-8") as f:
-                    meta = json.load(f)
-                    meta["id"] = entry.replace("-metadata.json", "")
-                    articles.append(meta)
+                try:
+                    with open(meta_path, "r", encoding="utf-8") as f:
+                        meta = json.load(f)
+                        meta["id"] = entry.replace("-metadata.json", "")
+                        articles.append(meta)
+                except (json.JSONDecodeError, IOError):
+                    pass
 
     emit("result", status="success", articles=articles)
 
@@ -227,6 +233,20 @@ def handle_save_config(params):
     emit("result", status="success", message="配置已保存")
 
 
+def handle_read_file(params):
+    """读取指定文件内容"""
+    file_path = params.get("path", "")
+    if not file_path or not os.path.exists(file_path):
+        emit("error", code="FILE_NOT_FOUND", message=f"文件不存在: {file_path}")
+        return
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        emit("result", status="success", content=content)
+    except Exception as e:
+        emit("error", code="READ_ERROR", message=str(e))
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -242,6 +262,7 @@ def main():
         "list_articles": handle_list_articles,
         "get_config": handle_get_config,
         "save_config": handle_save_config,
+        "read_file": handle_read_file,
     }
 
     handler = handlers.get(action)

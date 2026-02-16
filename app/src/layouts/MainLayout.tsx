@@ -12,8 +12,9 @@ export default function MainLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       <aside className="w-56 bg-gray-900 text-white flex flex-col">
-        <div className="p-4 text-xl font-bold border-b border-gray-700">
-          质取AI
+        <div className="p-4 flex items-center gap-2 border-b border-gray-700">
+          <img src="/logo.png" alt="质取AI" className="w-8 h-8 rounded" />
+          <span className="text-xl font-bold">质取AI</span>
         </div>
         <nav className="flex-1 p-2">
           {navItems.map((item) => (

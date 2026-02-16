@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 interface ArticlePreviewProps {
   title: string;
   htmlContent: string;
@@ -5,6 +7,8 @@ interface ArticlePreviewProps {
 }
 
 export default function ArticlePreview({ title, htmlContent, coverPath }: ArticlePreviewProps) {
+  const sanitizedHtml = DOMPurify.sanitize(htmlContent);
+
   const handleCopyHtml = async () => {
     try {
       await navigator.clipboard.writeText(htmlContent);
@@ -24,6 +28,7 @@ export default function ArticlePreview({ title, htmlContent, coverPath }: Articl
     const blob = new Blob([htmlContent], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
   return (
@@ -59,7 +64,7 @@ export default function ArticlePreview({ title, htmlContent, coverPath }: Articl
 
       <div
         className="p-5 prose prose-sm max-w-none overflow-auto max-h-[600px]"
-        dangerouslySetInnerHTML={{ __html: htmlContent }}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     </div>
   );

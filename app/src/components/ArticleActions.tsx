@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { ArticleMeta } from "./ArticleList";
 
 interface ArticleActionsProps {
@@ -15,21 +16,43 @@ export default function ArticleActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handlePreview = () => {
-    if (article.articlePath) {
-      window.open(article.articlePath, "_blank");
+  const readArticleHtml = async (): Promise<string | null> => {
+    if (!article.articlePath) return null;
+    try {
+      const result = await invoke<string>("run_sidecar", {
+        commandJson: JSON.stringify({
+          action: "read_file",
+          path: article.articlePath,
+        }),
+      });
+      for (const line of result.split("\n")) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.type === "result" && parsed.content) return parsed.content;
+        } catch { /* skip */ }
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
+
+  const handlePreview = async () => {
+    const html = await readArticleHtml();
+    if (html) {
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
   };
 
   const handleCopyHtml = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        `<article>${article.title}</article>`
-      );
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard API may fail in some contexts
+    const html = await readArticleHtml();
+    if (html) {
+      try {
+        await navigator.clipboard.writeText(html);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch { /* clipboard API may fail */ }
     }
   };
 
@@ -81,9 +104,11 @@ export default function ArticleActions({
         </button>
         <button
           onClick={handleCopyHtml}
+          disabled={!article.articlePath}
           className="w-full px-4 py-2 text-sm rounded-lg
             border border-gray-200 text-gray-700
-            hover:bg-gray-50 transition-colors cursor-pointer"
+            hover:bg-gray-50 disabled:opacity-40
+            disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           {copied ? "已复制 ✓" : "复制 HTML"}
         </button>

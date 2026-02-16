@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: blob: data: https:; connect-src 'self' https:"
     }
   },
   "plugins": {
@@ -30,7 +30,7 @@
           "name": "python-sidecar",
           "cmd": "python3",
           "args": [
-            { "validator": ".*" }
+            { "validator": "^.*sidecar_main\\.py$" }
           ]
         },
         {

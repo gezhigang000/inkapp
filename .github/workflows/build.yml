@@ -19,10 +19,12 @@ jobs:
             target: aarch64-apple-darwin
             sidecar_name: python-sidecar-aarch64-apple-darwin
             separator: ':'
+            noconsole: ''
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             sidecar_name: python-sidecar-x86_64-pc-windows-msvc.exe
             separator: ';'
+            noconsole: '--noconsole'
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +41,7 @@ jobs:
         run: |
           cd scripts
           SEP="${{ matrix.separator }}"
-          pyinstaller --onefile --name python-sidecar \
+          pyinstaller --onefile ${{ matrix.noconsole }} --name python-sidecar \
             --add-data "../prompts${SEP}prompts" \
             --hidden-import requests \
             --hidden-import openpyxl \

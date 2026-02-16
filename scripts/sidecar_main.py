@@ -9,6 +9,8 @@ import io
 
 # Windows 下强制 UTF-8 编码，避免中文乱码
 if sys.platform == "win32":
+    # stdin: Rust 发送 UTF-8 字节，Python 默认按 GBK 解码会乱码
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="replace")
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")

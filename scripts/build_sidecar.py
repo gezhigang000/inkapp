@@ -64,22 +64,28 @@ def build():
         hidden_imports.extend(["--hidden-import", mod])
 
     # 数据文件：prompts/ 和 assets/ 目录
+    # Windows 用 ; 分隔，macOS/Linux 用 :
+    sep = ";" if platform.system().lower() == "windows" else ":"
     datas = []
     prompts_dir = PROJECT_ROOT / "prompts"
     assets_dir = PROJECT_ROOT / "assets"
     if prompts_dir.exists():
-        datas.extend(["--add-data", f"{prompts_dir}:prompts"])
+        datas.extend(["--add-data", f"{prompts_dir}{sep}prompts"])
     if assets_dir.exists():
-        datas.extend(["--add-data", f"{assets_dir}:assets"])
+        datas.extend(["--add-data", f"{assets_dir}{sep}assets"])
 
     # 将 scripts/ 下的 .py 文件作为数据文件（供动态 import 使用）
     for py_file in SCRIPT_DIR.glob("*.py"):
         if py_file.stem != "build_sidecar":
-            datas.extend(["--add-data", f"{py_file}:scripts"])
+            datas.extend(["--add-data", f"{py_file}{sep}scripts"])
+
+    # Windows 下隐藏控制台窗口（sidecar 通过 stdin/stdout 管道通信，不需要控制台）
+    noconsole = ["--noconsole"] if platform.system().lower() == "windows" else []
 
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
+        *noconsole,
         "--name", exe_name,
         "--distpath", str(OUTPUT_DIR),
         "--workpath", str(PROJECT_ROOT / "build" / "pyinstaller"),

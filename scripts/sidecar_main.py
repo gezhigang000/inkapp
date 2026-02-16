@@ -247,6 +247,42 @@ def handle_read_file(params):
         emit("error", code="READ_ERROR", message=str(e))
 
 
+def handle_delete_article(params):
+    """删除文章：根据 article_id 删除对应目录或文件"""
+    import shutil
+
+    article_id = params.get("article_id", "")
+    output_dir = params.get("output_dir",
+                            os.path.join(PROJECT_ROOT, "output", "articles"))
+
+    if not article_id:
+        emit("error", code="MISSING_PARAMS", message="缺少 article_id")
+        return
+
+    deleted = []
+
+    # 情况1：article_id 是子目录名
+    dir_path = os.path.join(output_dir, article_id)
+    if os.path.isdir(dir_path):
+        shutil.rmtree(dir_path)
+        deleted.append(dir_path)
+    else:
+        # 情况2：article_id 对应 output_dir 下的散落文件（以 id 为前缀）
+        if os.path.exists(output_dir):
+            for fname in os.listdir(output_dir):
+                if fname.startswith(article_id):
+                    fpath = os.path.join(output_dir, fname)
+                    os.remove(fpath)
+                    deleted.append(fpath)
+
+    if deleted:
+        emit("result", status="success",
+             message=f"已删除 {len(deleted)} 个文件/目录", deleted=deleted)
+    else:
+        emit("error", code="NOT_FOUND",
+             message=f"未找到文章: {article_id}")
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -263,6 +299,7 @@ def main():
         "get_config": handle_get_config,
         "save_config": handle_save_config,
         "read_file": handle_read_file,
+        "delete_article": handle_delete_article,
     }
 
     handler = handlers.get(action)

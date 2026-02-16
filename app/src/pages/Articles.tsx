@@ -61,7 +61,17 @@ export default function Articles() {
 
   const selectedArticle = articles.find((a) => a.id === selectedId);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    try {
+      await invoke("run_sidecar", {
+        commandJson: JSON.stringify({
+          action: "delete_article",
+          article_id: id,
+        }),
+      });
+    } catch {
+      // 即使 sidecar 删除失败也从列表移除
+    }
     setArticles((prev) => prev.filter((a) => a.id !== id));
     setSelectedId(null);
   };

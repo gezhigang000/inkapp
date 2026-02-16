@@ -1,13 +1,24 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MainLayout from "./layouts/MainLayout";
+import Dashboard from "./pages/Dashboard";
+import Create from "./pages/Create";
+import Models from "./pages/Models";
+import Articles from "./pages/Articles";
+import Settings from "./pages/Settings";
+
 function App() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          质取AI知识创作工具
-        </h1>
-        <p className="text-gray-500">Tauri 2.0 + React + TypeScript</p>
-      </div>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/create" element={<Create />} />
+          <Route path="/models" element={<Models />} />
+          <Route path="/articles" element={<Articles />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 

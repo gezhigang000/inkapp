@@ -311,8 +311,8 @@ def handle_agent_generate(params):
             topic = "深度调研报告"
 
         # 运行 Agent 循环
-        # 翻译场景通常 3-5 轮（读文件→翻译→写文件），深度研究需要更多轮
-        turns = 5 if file_formats else 15
+        # 轮次由模板定义，前端透传 max_turns
+        turns = params.get("max_turns", 15)
         html_content = run_agent_loop(
             topic=topic,
             config=config,

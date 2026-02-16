@@ -9,6 +9,8 @@ export interface PromptTemplate {
   inputType: "topic" | "video";
   builtin?: boolean;
   agentMode?: boolean;
+  /** Agent 模式最大轮次（内置，用户不可见） */
+  maxTurns?: number;
 }
 
 const DEEP_RESEARCH_PROMPT = `你是一个有十年工作经验的软件工程师，同时也是一个 AI 技术领域的深度研究者，在微信公众号上分享你对前沿技术的深度调研和独立思考。
@@ -71,137 +73,6 @@ const DEEP_RESEARCH_PROMPT = `你是一个有十年工作经验的软件工程�
 - 禁止在 HTML 之前或之后输出任何说明性文字
 - 禁止输出文章大纲、要点列表或写作思路
 - 你的回复中不应该有任何非 HTML 的内容`;
-
-const DAILY_NEWS_PROMPT = `你是一个有十年工作经验的软件工程师，同时也是一个 AI 技术爱好者，在微信公众号上分享你对前沿动态的观察和思考。
-
-你的写作风格：
-- 像一个懂技术的老朋友在跟读者聊天，不是新闻播报员
-- 用第一人称，比如「我注意到」「我试了一下」「我的判断是」
-- 对技术细节有自己的理解和判断，不只是搬运官方公告，要加入自己的解读和点评
-- 会结合实际开发经验来评价新工具/新模型
-- 语气务实、不吹不黑，该夸的夸，该泼冷水的泼冷水
-
-请完成以下任务：
-
-1. 搜索过去24小时内「{{TOPIC}}」领域的最新动态
-2. 筛选最有价值的 3-5 条信息，不要硬凑
-3. 每条信息必须包含以下深度维度：
-   - **事件本身**：发生了什么，关键数据和细节
-   - **为什么重要**：对行业/开发者的实际影响
-   - **我的解读**：你作为资深工程师的独立判断和预测
-   - **实操建议**：开发者现在应该做什么（关注/试用/观望/忽略）
-
-4. 文末增加「本周趋势」板块：从这些动态中提炼 1-2 个值得关注的趋势方向
-
-文章要求：
-- 输出格式为可直接粘贴到微信公众号编辑器的 HTML（全部使用内联样式）
-- 风格是技术老兵的分享笔记，而非正式新闻稿
-- 关键数据和亮点用醒目样式突出
-- 包含基准测试对比时用表格呈现
-- 每条新闻的「我的解读」用不同底色的卡片样式标注
-- 文末附参考来源
-
-HTML 排版规范：
-- 不要在文章顶部生成标题区域，直接从正文内容开始
-- 使用 section 标签分段，全部内联 CSS
-- 正文字号 15px，行高 1.8，颜色 #333
-- 关键数字用大号加粗彩色突出
-- 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
-
-请只输出 HTML 内容，不要输出其他说明文字。HTML 以 <section 开头，以 </section> 结尾。`;
-
-const TUTORIAL_PROMPT = `你是一个有十年工作经验的软件工程师，擅长将复杂技术概念用通俗易懂的方式讲解，写过多篇阅读量 10w+ 的技术教程。
-
-请围绕「{{TOPIC}}」撰写一篇面向开发者的深度技术教程。
-
-## 教程结构（必须包含）
-
-1. **为什么需要它**：从一个真实的开发痛点切入，让读者产生共鸣
-2. **核心概念**：用类比和图示解释关键概念，避免照搬文档
-3. **快速上手**：一个最小可运行的 Hello World 示例，5 分钟跑通
-4. **实战案例**：一个贴近真实业务的完整示例，包含：
-   - 完整可运行的代码（带详细注释）
-   - 关键决策点的解释（为什么这样写而不是那样写）
-   - 常见错误示范和正确写法对比
-5. **进阶技巧**：2-3 个高级用法或性能优化技巧
-6. **避坑指南**：列出 3-5 个常见的坑，每个坑包含：
-   - 错误现象
-   - 根本原因
-   - 解决方案
-7. **最佳实践清单**：可以直接 checklist 使用的最佳实践
-8. **延伸阅读**：推荐 2-3 个高质量学习资源
-
-## 写作要求
-
-- 文章长度 3000-5000 字，内容扎实
-- 代码示例必须完整可运行，不要省略关键部分
-- 用「你」来称呼读者，保持对话感
-- 每个代码块前后都要有解释，不要只贴代码
-
-## HTML 排版规范
-
-- 输出格式为可直接粘贴到微信公众号编辑器的 HTML（全部使用内联样式）
-- 代码块用等宽字体、深色背景（#1e1e1e）展示，代码高亮
-- 关键概念用醒目样式突出（彩色背景标签）
-- 步骤用有序列表清晰呈现
-- 「避坑指南」用警告卡片样式（橙色边框）
-- 「最佳实践」用成功卡片样式（绿色边框）
-- 不要在文章顶部生成标题区域，直接从正文内容开始
-- 使用 section 标签分段，全部内联 CSS
-- 正文字号 15px，行高 1.8，颜色 #333
-- 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
-
-请只输出 HTML 内容。HTML 以 <section 开头，以 </section> 结尾。`;
-
-const PRODUCT_REVIEW_PROMPT = `你是一个有十年工作经验的软件工程师，经常测评各种开发工具和 AI 产品，以客观务实著称，你的测评文章在开发者社区有很高的可信度。
-
-请对「{{TOPIC}}」进行全面深度测评。
-
-## 测评框架（每个维度都必须覆盖）
-
-### 1. 产品定位（200字）
-- 这个产品解决什么问题？目标用户是谁？
-- 在市场中的定位（面向个人/团队/企业？免费/付费？）
-
-### 2. 核心功能深度体验（500字）
-- 列出 3-5 个核心功能，每个功能：
-  - 功能描述
-  - 实际使用效果（附具体操作步骤或截图描述）
-  - 与预期的差距
-
-### 3. 性能与稳定性（300字）
-- 响应速度、并发处理能力
-- 是否遇到 bug 或崩溃
-- API 稳定性（如适用）
-
-### 4. 竞品横向对比（用表格）
-选择 2-3 个最直接的竞品，从以下维度对比：
-- 功能完整度、易用性、性能、定价、社区活跃度、文档质量
-- 每个维度用 ⭐ 评分（1-5 星）
-
-### 5. 定价分析（200字）
-- 免费版能用到什么程度？
-- 付费版的性价比如何？
-- 与竞品的价格对比
-
-### 6. 最终评分与推荐
-- 总分（满分 10 分）
-- 一句话总结
-- 推荐人群 vs 不推荐人群
-- 替代方案建议
-
-## HTML 排版规范
-
-- 输出格式为可直接粘贴到微信公众号编辑器的 HTML（全部使用内联样式）
-- 竞品对比必须用表格呈现（带边框和交替行色）
-- 优点用绿色卡片、缺点用红色卡片
-- 评分用醒目的大号数字展示
-- 不要在文章顶部生成标题区域，直接从正文内容开始
-- 使用 section 标签分段，全部内联 CSS
-- 正文字号 15px，行高 1.8，颜色 #333
-- 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
-
-请只输出 HTML 内容。HTML 以 <section 开头，以 </section> 结尾。`;
 
 const DATA_ANALYSIS_PROMPT = `你是一位资深数据分析师（10年+经验），擅长从原始数据中挖掘深层洞察，曾为多家企业提供数据驱动的决策建议。
 
@@ -407,16 +278,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     inputType: "topic",
     builtin: true,
     agentMode: true,
-  },
-  {
-    id: "daily-news",
-    name: "行业日报",
-    description: "搜索行业最新动态创作日报",
-    icon: "📰",
-    color: "oklch(0.55 0.15 145)",
-    prompt: DAILY_NEWS_PROMPT,
-    inputType: "topic",
-    builtin: true,
+    maxTurns: 15,
   },
   {
     id: "video-analysis",
@@ -429,26 +291,6 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     builtin: true,
   },
   {
-    id: "tutorial",
-    name: "技术教程",
-    description: "生成面向开发者的技术教程",
-    icon: "📖",
-    color: "oklch(0.55 0.15 300)",
-    prompt: TUTORIAL_PROMPT,
-    inputType: "topic",
-    builtin: true,
-  },
-  {
-    id: "product-review",
-    name: "产品测评",
-    description: "对产品或工具进行全面测评",
-    icon: "⚡",
-    color: "oklch(0.55 0.15 80)",
-    prompt: PRODUCT_REVIEW_PROMPT,
-    inputType: "topic",
-    builtin: true,
-  },
-  {
     id: "data-analysis",
     name: "数据分析",
     description: "上传 Excel/CSV 数据进行深度分析",
@@ -458,6 +300,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     inputType: "topic",
     builtin: true,
     agentMode: true,
+    maxTurns: 10,
   },
   {
     id: "ppt-maker",
@@ -468,6 +311,8 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     prompt: PPT_PROMPT,
     inputType: "topic",
     builtin: true,
+    agentMode: true,
+    maxTurns: 8,
   },
   {
     id: "translate",
@@ -479,5 +324,5 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     inputType: "topic",
     builtin: true,
     agentMode: true,
+    maxTurns: 5,
   },
-];

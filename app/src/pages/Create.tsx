@@ -55,7 +55,7 @@ export default function Create() {
     }
 
     // Determine mode from template
-    const mode = isVideo ? "video" : selectedTemplate?.id === "daily-news" ? "daily" : "topic";
+    const mode = isVideo ? "video" : "topic";
 
     const payload: Record<string, unknown> = {
       action: selectedTemplate?.agentMode ? "agent_generate" : "generate",
@@ -119,6 +119,11 @@ export default function Create() {
         ext: f.name.split(".").pop()?.toLowerCase() || "",
         path: f.path,
       }));
+    }
+
+    // Agent 模式：传递模板内置的最大轮次
+    if (selectedTemplate?.maxTurns) {
+      payload.max_turns = selectedTemplate.maxTurns;
     }
 
     startGenerate(payload);

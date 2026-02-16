@@ -506,10 +506,19 @@ def run_agent_loop(topic, config, emit_fn, workspace,
     if template_prompt and "{{TOPIC}}" in template_prompt:
         template_prompt = template_prompt.replace("{{TOPIC}}", topic)
 
+    # 有上传文件时，去掉模板中"只输出 HTML"的指令（与格式保持规则冲突）
+    if file_formats and template_prompt:
+        for phrase in ["请只输出 HTML 内容。", "请只输出HTML内容。",
+                       "HTML 以 <section 开头，以 </section> 结尾。"]:
+            template_prompt = template_prompt.replace(phrase, "")
+
     system_prompt = get_agent_system_prompt(template_prompt, file_formats)
 
-    # Build user message
-    user_content = f"请对「{topic}」进行深度调研和创作。\n\n"
+    # Build user message — 根据场景调整措辞
+    if file_formats:
+        user_content = f"请处理以下任务：「{topic}」\n\n"
+    else:
+        user_content = f"请对「{topic}」进行调研和创作。\n\n"
 
     if file_contents:
         user_content += "## 用户上传的参考资料\n\n"
@@ -522,10 +531,20 @@ def run_agent_loop(topic, config, emit_fn, workspace,
             user_content += f"- `input/{f['name']}` (格式: .{f.get('ext', '?')})\n"
         user_content += "\n"
 
-    user_content += (
-        "请开始工作。使用工具进行调研和创作，"
-        "最终将文章写入 output/article.html。"
-    )
+    if file_formats:
+        # 翻译/文件处理场景：强调输出原格式
+        exts = [f.get("ext", "").lower() for f in file_formats]
+        ext_str = ", ".join(f".{e}" for e in exts if e)
+        user_content += (
+            f"请开始工作。上传文件格式为 {ext_str}，"
+            "你必须用 run_python 生成与上传文件相同格式的输出文件到 output/ 目录，"
+            "同时生成 output/article.html 作为 HTML 预览版。"
+        )
+    else:
+        user_content += (
+            "请开始工作。使用工具进行调研和创作，"
+            "最终将文章写入 output/article.html。"
+        )
 
     messages = [
         {"role": "system", "content": system_prompt},

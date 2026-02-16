@@ -6,6 +6,8 @@ Sidecar 入口：接收 Tauri 前端命令，输出 JSON Lines 进度。
 import sys
 import json
 import os
+import logging
+from datetime import datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,11 +26,38 @@ PYLIB_DIR = os.path.join(PROJECT_ROOT, "pylib")
 if os.path.exists(PYLIB_DIR) and PYLIB_DIR not in sys.path:
     sys.path.insert(0, PYLIB_DIR)
 
+# ============================================================
+# 本地日志 & 缓存目录
+# ============================================================
+INK_HOME = os.path.join(os.path.expanduser("~"), "Ink")
+LOG_DIR = os.path.join(INK_HOME, "logs")
+CACHE_DIR = os.path.join(INK_HOME, "cache")
+os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+# 按天滚动的日志文件
+_log_file = os.path.join(LOG_DIR, f"{datetime.now().strftime('%Y-%m-%d')}.log")
+logging.basicConfig(
+    filename=_log_file,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("ink")
+
 
 def emit(event_type, **kwargs):
-    """输出一行 JSON 事件到 stdout"""
+    """输出一行 JSON 事件到 stdout，同时写入日志"""
     event = {"type": event_type, **kwargs}
     print(json.dumps(event, ensure_ascii=False), flush=True)
+    # 写入本地日志
+    msg = kwargs.get("message", "")
+    if event_type == "error":
+        logger.error("emit %s: %s %s", event_type, kwargs.get("code", ""), msg)
+    elif event_type == "result":
+        logger.info("emit %s: status=%s %s", event_type, kwargs.get("status", ""), msg)
+    else:
+        logger.info("emit %s: %s", event_type, msg)
 
 
 def handle_generate(params):
@@ -41,6 +70,9 @@ def handle_generate(params):
         pick_daily_variation, append_footer,
     )
 
+    logger.info("=== generate start === mode=%s topic=%s provider=%s",
+                params.get("mode"), params.get("topic", "")[:60],
+                params.get("provider", "?"))
     emit("progress", stage="init", message="正在加载配置...")
 
     # 配置完全从前端参数构建，不依赖 config.env 文件
@@ -96,6 +128,15 @@ def handle_generate(params):
         if not html_content:
             emit("error", code="GENERATION_FAILED", message="文章生成失败，未获得输出")
             return
+
+        # 缓存 LLM 原始输出，方便排查和复用
+        cache_file = os.path.join(CACHE_DIR, f"{timestamp}-raw.html")
+        try:
+            with open(cache_file, "w", encoding="utf-8") as cf:
+                cf.write(html_content)
+            logger.info("LLM raw output cached: %s (%d chars)", cache_file, len(html_content))
+        except OSError:
+            pass
 
         emit("progress", stage="processing", message="正在处理文章...", percent=50)
 
@@ -175,8 +216,10 @@ def handle_generate(params):
              article_count=len(articles))
 
     except SystemExit as e:
+        logger.error("generate SystemExit code=%s", e.code)
         emit("error", code="GENERATION_ERROR", message=f"生成过程异常退出 (code={e.code})")
     except Exception as e:
+        logger.exception("generate exception")
         emit("error", code="GENERATION_ERROR", message=str(e))
 
 
@@ -488,7 +531,61 @@ def _extract_docx(fpath):
     return "\n".join(parts) if parts else "(空文档)"
 
 
+def _cleanup_old_logs(max_days=7):
+    """清理超过 max_days 天的日志文件"""
+    import glob
+    cutoff = datetime.now().timestamp() - max_days * 86400
+    for f in glob.glob(os.path.join(LOG_DIR, "*.log")):
+        if os.path.getmtime(f) < cutoff:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
+
+def _cleanup_old_cache(max_days=3):
+    """清理超过 max_days 天的缓存文件"""
+    import glob
+    cutoff = datetime.now().timestamp() - max_days * 86400
+    for f in glob.glob(os.path.join(CACHE_DIR, "*")):
+        if os.path.getmtime(f) < cutoff:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
+
+def handle_get_logs(params):
+    """读取最近的日志内容"""
+    lines = params.get("lines", 100)
+    log_file = os.path.join(LOG_DIR, f"{datetime.now().strftime('%Y-%m-%d')}.log")
+    if not os.path.exists(log_file):
+        emit("result", status="success", content="暂无日志", log_dir=LOG_DIR)
+        return
+    with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+        all_lines = f.readlines()
+    tail = all_lines[-lines:]
+    emit("result", status="success", content="".join(tail), log_dir=LOG_DIR)
+
+
+def handle_clear_cache(params):
+    """清理缓存目录"""
+    import glob
+    count = 0
+    for f in glob.glob(os.path.join(CACHE_DIR, "*")):
+        try:
+            os.remove(f)
+            count += 1
+        except OSError:
+            pass
+    emit("result", status="success", message=f"已清理 {count} 个缓存文件")
+
+
 def main():
+    # 启动时清理过期日志和缓存
+    _cleanup_old_logs()
+    _cleanup_old_cache()
+
     raw = sys.stdin.read()
     try:
         command = json.loads(raw)
@@ -497,6 +594,7 @@ def main():
         sys.exit(1)
 
     action = command.get("action")
+    logger.info("action=%s", action)
     handlers = {
         "generate": handle_generate,
         "validate_key": handle_validate_key,
@@ -507,6 +605,8 @@ def main():
         "delete_article": handle_delete_article,
         "extract_files": handle_extract_files,
         "render_template": handle_render_template,
+        "get_logs": handle_get_logs,
+        "clear_cache": handle_clear_cache,
     }
 
     handler = handlers.get(action)
@@ -514,9 +614,11 @@ def main():
         try:
             handler(command)
         except Exception as e:
+            logger.exception("handler %s failed", action)
             emit("error", code="INTERNAL_ERROR", message=str(e))
             sys.exit(1)
     else:
+        logger.warning("unknown action: %s", action)
         emit("error", code="UNKNOWN_ACTION", message=f"未知操作: {action}")
         sys.exit(1)
 

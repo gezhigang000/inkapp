@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -39,8 +39,18 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
   const [params, setParams] = useState<ModeParams>({});
   const runningRef = useRef(false);
 
+  // Safety: if isRunning is false but ref is stuck true (e.g. HMR, crash), reset it
+  useEffect(() => {
+    if (!isRunning) runningRef.current = false;
+  }, [isRunning]);
+
   const startGenerate = useCallback(async (payload: Record<string, unknown>) => {
-    if (runningRef.current) return;
+    // Use state check — button is already disabled when running,
+    // so this is just a safety net for rapid double-clicks.
+    if (runningRef.current) {
+      console.warn("[useGenerate] startGenerate called while already running, ignoring");
+      return;
+    }
     runningRef.current = true;
 
     setEvents([]);

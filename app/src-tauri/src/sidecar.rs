@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SidecarEvent {
@@ -25,15 +24,19 @@ pub struct SidecarEvent {
 
 /// Resolve the path to sidecar_main.py.
 /// In development the project root is two levels above the resource dir.
-fn resolve_script_path(app: &tauri::AppHandle) -> String {
+fn resolve_script_path(app: &tauri::AppHandle) -> Option<String> {
     if let Ok(res) = app.path().resource_dir() {
-        let candidate: PathBuf = res.join("../../scripts/sidecar_main.py");
+        let candidate = res.join("../../scripts/sidecar_main.py");
         if candidate.exists() {
-            return candidate.to_string_lossy().to_string();
+            return Some(candidate.to_string_lossy().to_string());
         }
     }
     // Fallback: relative to CWD (works during `cargo tauri dev`)
-    "scripts/sidecar_main.py".to_string()
+    let fallback = std::path::Path::new("scripts/sidecar_main.py");
+    if fallback.exists() {
+        return Some(fallback.to_string_lossy().to_string());
+    }
+    None
 }
 
 #[tauri::command]
@@ -41,15 +44,25 @@ pub async fn run_sidecar(
     app: tauri::AppHandle,
     command_json: String,
 ) -> Result<String, String> {
-    let script_path = resolve_script_path(&app);
-
     let shell = app.shell();
 
-    let (mut rx, mut child) = shell
-        .command("python-sidecar")
-        .args(&[&script_path])
-        .spawn()
-        .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+    // 优先使用 PyInstaller 打包的 sidecar 二进制；
+    // 如果 sidecar 不可用（开发模式），回退到 python3 直接执行。
+    let (mut rx, mut child) = match shell.sidecar("python-sidecar") {
+        Ok(cmd) => cmd.spawn().map_err(|e| {
+            format!("Failed to spawn sidecar binary: {}", e)
+        })?,
+        Err(_) => {
+            // 开发模式回退：通过 python3 执行脚本
+            let script_path = resolve_script_path(&app)
+                .unwrap_or_else(|| "scripts/sidecar_main.py".to_string());
+            shell
+                .command("python-sidecar")
+                .args(&[&script_path])
+                .spawn()
+                .map_err(|e| format!("Failed to spawn python sidecar: {}", e))?
+        }
+    };
 
     // Write the full JSON payload to stdin.
     child

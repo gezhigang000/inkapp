@@ -9,6 +9,11 @@ pylib/
 # 生成产物（每次运行动态生成）
 output/
 logs/
+build/
+
+# PyInstaller 打包产物
+app/src-tauri/binaries/
+*.spec
 
 # 资源文件（PDF 体积大）
 reports/

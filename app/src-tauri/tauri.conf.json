@@ -10,7 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "title": "质取AI知识创作工具",
     "windows": [
       {
         "title": "质取AI知识创作工具",
@@ -22,6 +21,19 @@
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "shell": {
+      "scope": [
+        {
+          "name": "python-sidecar",
+          "cmd": "python3",
+          "args": [
+            { "validator": ".*" }
+          ]
+        }
+      ]
     }
   },
   "bundle": {

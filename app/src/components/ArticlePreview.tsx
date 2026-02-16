@@ -3,18 +3,24 @@ import DOMPurify from "dompurify";
 import { invoke } from "@tauri-apps/api/core";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
+import { listen } from "@tauri-apps/api/event";
+import { useConfig } from "../hooks/useConfig";
 
 interface ArticlePreviewProps {
   title: string;
   htmlContent: string;
   coverPath?: string;
+  articlePath?: string;
   fileType?: string;
   metadataPath?: string;
 }
 
-export default function ArticlePreview({ title, htmlContent, coverPath, fileType, metadataPath }: ArticlePreviewProps) {
+export default function ArticlePreview({ title, htmlContent, coverPath, articlePath, fileType, metadataPath }: ArticlePreviewProps) {
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<{ type: "success" | "error" | "progress"; text: string } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { getConfig } = useConfig();
 
   const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
     ADD_TAGS: ["style"],
@@ -22,15 +28,12 @@ export default function ArticlePreview({ title, htmlContent, coverPath, fileType
     ALLOW_DATA_ATTR: true,
   });
 
-  // Hide broken images gracefully
   useEffect(() => {
     const container = contentRef.current;
     if (!container) return;
     const imgs = container.querySelectorAll("img");
     imgs.forEach((img) => {
-      img.onerror = () => {
-        img.style.display = "none";
-      };
+      img.onerror = () => { img.style.display = "none"; };
     });
   }, [sanitizedHtml]);
 
@@ -67,11 +70,54 @@ export default function ArticlePreview({ title, htmlContent, coverPath, fileType
   const handleOpenFolder = async () => {
     if (!metadataPath) return;
     try {
-      // Open the directory containing the metadata file
       const dir = metadataPath.replace(/[/\\][^/\\]+$/, "");
       await openPath(dir);
     } catch (err) {
       console.error("Failed to open folder:", err);
+    }
+  };
+
+  const handlePublish = async () => {
+    const appId = getConfig("WECHAT_APP_ID");
+    const appSecret = getConfig("WECHAT_APP_SECRET");
+    if (!appId || !appSecret) {
+      setPublishMsg({ type: "error", text: "请先在设置页配置微信公众号 AppID 和 AppSecret" });
+      return;
+    }
+    if (!articlePath) {
+      setPublishMsg({ type: "error", text: "文章路径不可用" });
+      return;
+    }
+
+    setPublishing(true);
+    setPublishMsg({ type: "progress", text: "正在发布..." });
+
+    let unlisten: (() => void) | null = null;
+    try {
+      unlisten = await listen<Record<string, unknown>>("sidecar-event", (event) => {
+        const d = event.payload;
+        if (d.type === "progress" && d.stage === "publish") {
+          setPublishMsg({ type: "progress", text: (d.message as string) || "处理中..." });
+        }
+      });
+
+      await invoke("run_sidecar", {
+        commandJson: JSON.stringify({
+          action: "publish_wechat",
+          app_id: appId,
+          app_secret: appSecret,
+          article_path: articlePath,
+          cover_path: coverPath || "",
+          title,
+          author: getConfig("WECHAT_AUTHOR") || "Ink",
+        }),
+      });
+      setPublishMsg({ type: "success", text: "已发布到微信公众号草稿箱 ✓" });
+    } catch (err) {
+      setPublishMsg({ type: "error", text: `发布失败: ${err instanceof Error ? err.message : err}` });
+    } finally {
+      setPublishing(false);
+      unlisten?.();
     }
   };
 
@@ -80,6 +126,8 @@ export default function ArticlePreview({ title, htmlContent, coverPath, fileType
     xlsx: "Excel 表格",
     pdf: "PDF 文件",
   };
+
+  const hasWechatConfig = !!(getConfig("WECHAT_APP_ID") && getConfig("WECHAT_APP_SECRET"));
 
   return (
     <div
@@ -133,8 +181,33 @@ export default function ArticlePreview({ title, htmlContent, coverPath, fileType
             >
               在浏览器中打开
             </button>
+            {hasWechatConfig && articlePath && (
+              <button
+                onClick={handlePublish}
+                disabled={publishing}
+                className="px-3 h-8 text-xs font-medium rounded-[10px] transition-[background-color,opacity] duration-150 disabled:opacity-40"
+                style={{
+                  background: "oklch(0.45 0.15 145)",
+                  color: "oklch(1 0 0)",
+                }}
+              >
+                {publishing ? "发布中..." : "发布到公众号"}
+              </button>
+            )}
           </div>
         </div>
+        {publishMsg && (
+          <p
+            className="text-xs mt-2"
+            style={{
+              color: publishMsg.type === "success" ? "oklch(0.45 0.1 145)"
+                : publishMsg.type === "error" ? "oklch(0.63 0.14 52)"
+                : "oklch(0.50 0 0)",
+            }}
+          >
+            {publishMsg.text}
+          </p>
+        )}
       </div>
 
       {coverPath && (

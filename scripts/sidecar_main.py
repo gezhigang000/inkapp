@@ -311,6 +311,8 @@ def handle_agent_generate(params):
             topic = "深度调研报告"
 
         # 运行 Agent 循环
+        # 翻译场景通常 3-5 轮（读文件→翻译→写文件），深度研究需要更多轮
+        turns = 5 if file_formats else 15
         html_content = run_agent_loop(
             topic=topic,
             config=config,
@@ -319,7 +321,7 @@ def handle_agent_generate(params):
             template_prompt=template_prompt,
             file_contents=file_contents,
             file_formats=file_formats,
-            max_turns=15,
+            max_turns=turns,
         )
 
         if not html_content:
@@ -800,6 +802,77 @@ def handle_clear_cache(params):
     emit("result", status="success", message=f"已清理 {count} 个缓存文件")
 
 
+def handle_publish_wechat(params):
+    """发布文章到微信公众号草稿箱"""
+    import requests as req
+    from daily_ai_news import (
+        get_access_token, upload_cover_image, create_draft,
+    )
+    from image_processor import process_images_in_html
+
+    app_id = params.get("app_id", "")
+    app_secret = params.get("app_secret", "")
+    article_path = params.get("article_path", "")
+    cover_path = params.get("cover_path", "")
+    title = params.get("title", "未命名文章")
+    author = params.get("author", "Ink")
+
+    if not app_id or not app_secret:
+        emit("error", code="MISSING_CONFIG", message="请先配置微信公众号 AppID 和 AppSecret")
+        return
+    if not article_path or not os.path.exists(article_path):
+        emit("error", code="FILE_NOT_FOUND", message=f"文章文件不存在: {article_path}")
+        return
+
+    try:
+        emit("progress", stage="publish", message="正在获取 access_token...")
+        token = get_access_token(app_id, app_secret)
+
+        emit("progress", stage="publish", message="正在读取文章...")
+        html = open(article_path, "r", encoding="utf-8").read()
+
+        # 上传文章内图片到微信 CDN
+        emit("progress", stage="publish", message="正在上传文章图片到微信...")
+        html = process_images_in_html(html, mode="wechat", access_token=token)
+
+        # 上传封面图
+        thumb_media_id = None
+        if cover_path and os.path.exists(cover_path):
+            emit("progress", stage="publish", message="正在上传封面图...")
+            thumb_media_id = upload_cover_image(token, cover_path)
+
+        # 创建草稿
+        emit("progress", stage="publish", message="正在创建草稿...")
+        media_id = create_draft(token, title, html, author, thumb_media_id)
+
+        if media_id:
+            # 更新 metadata 状态
+            meta_dir = os.path.dirname(article_path)
+            for f in os.listdir(meta_dir):
+                if f.endswith("-metadata.json") or f == "metadata.json":
+                    meta_path = os.path.join(meta_dir, f)
+                    try:
+                        meta = json.loads(open(meta_path, "r", encoding="utf-8").read())
+                        meta["status"] = "published"
+                        meta["wechat_media_id"] = media_id
+                        open(meta_path, "w", encoding="utf-8").write(
+                            json.dumps(meta, ensure_ascii=False, indent=2)
+                        )
+                    except Exception:
+                        pass
+                    break
+
+            emit("result", status="success", message="已发布到草稿箱", media_id=media_id)
+        else:
+            emit("error", code="DRAFT_FAILED", message="创建草稿失败，请检查文章内容")
+
+    except SystemExit:
+        emit("error", code="AUTH_FAILED", message="access_token 获取失败，请检查 AppID/AppSecret 和 IP 白名单")
+    except Exception as e:
+        logger.exception("publish_wechat error")
+        emit("error", code="PUBLISH_ERROR", message=str(e))
+
+
 def main():
     # 启动时清理过期日志和缓存
     _cleanup_old_logs()
@@ -827,6 +900,7 @@ def main():
         "render_template": handle_render_template,
         "get_logs": handle_get_logs,
         "clear_cache": handle_clear_cache,
+        "publish_wechat": handle_publish_wechat,
     }
 
     handler = handlers.get(action)

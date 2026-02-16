@@ -14,6 +14,7 @@ interface GenerateResult {
   title: string;
   htmlContent: string;
   coverPath?: string;
+  articlePath?: string;   // 文章 HTML 文件路径
   fileType?: string;       // "html" | "docx" | "xlsx" | "pdf"
   metadataPath?: string;
 }
@@ -71,6 +72,7 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
                 title: data.title || "未命名文章",
                 htmlContent: html,
                 coverPath: undefined,
+                articlePath: data.article_path as string || undefined,
                 fileType: (data.file_type as string) || "html",
                 metadataPath: (data.metadata_path as string) || undefined,
               });

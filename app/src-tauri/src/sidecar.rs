@@ -63,20 +63,15 @@ pub async fn run_sidecar(
 
     // 优先使用 PyInstaller 打包的 sidecar 二进制（不依赖本地 Python）；
     // 如果 sidecar 不可用（找不到或启动失败），回退到 python3 直接执行。
-    // 开发模式下始终使用 python3，确保运行最新的 Python 源码。
-    let sidecar_result = if cfg!(dev) {
-        None
-    } else {
-        shell
-            .sidecar("python-sidecar")
-            .ok()
-            .and_then(|cmd| {
-                cmd.env("PYTHONIOENCODING", "utf-8")
-                    .env("PYTHONUTF8", "1")
-                    .spawn()
-                    .ok()
-            })
-    };
+    let sidecar_result = shell
+        .sidecar("python-sidecar")
+        .ok()
+        .and_then(|cmd| {
+            cmd.env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
+                .spawn()
+                .ok()
+        });
 
     let (mut rx, mut child) = match sidecar_result {
         Some(spawned) => spawned,

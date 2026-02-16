@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { ArticleMeta } from "./ArticleList";
+import { useConfig } from "../hooks/useConfig";
 
 interface ArticleActionsProps {
   article: ArticleMeta;
@@ -15,6 +17,9 @@ export default function ArticleActions({
 }: ArticleActionsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState("");
+  const { getConfig } = useConfig();
 
   const readArticleHtml = async (): Promise<string | null> => {
     if (!article.articlePath) return null;
@@ -73,6 +78,42 @@ export default function ArticleActions({
     onDelete(article.id);
     setConfirmDelete(false);
   };
+
+  const handlePublish = async () => {
+    const appId = getConfig("WECHAT_APP_ID");
+    const appSecret = getConfig("WECHAT_APP_SECRET");
+    if (!appId || !appSecret || !article.articlePath) return;
+    setPublishing(true);
+    setPublishMsg("发布中...");
+    let unlisten: (() => void) | null = null;
+    try {
+      unlisten = await listen<Record<string, unknown>>("sidecar-event", (event) => {
+        const d = event.payload;
+        if (d.type === "progress" && d.stage === "publish") {
+          setPublishMsg((d.message as string) || "处理中...");
+        }
+      });
+      await invoke("run_sidecar", {
+        commandJson: JSON.stringify({
+          action: "publish_wechat",
+          app_id: appId,
+          app_secret: appSecret,
+          article_path: article.articlePath,
+          cover_path: "",
+          title: article.title,
+          author: getConfig("WECHAT_AUTHOR") || "Ink",
+        }),
+      });
+      setPublishMsg("已发布到草稿箱 ✓");
+    } catch (err) {
+      setPublishMsg(`失败: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      setPublishing(false);
+      unlisten?.();
+    }
+  };
+
+  const hasWechatConfig = !!(getConfig("WECHAT_APP_ID") && getConfig("WECHAT_APP_SECRET"));
 
   const btnOutline = {
     border: "1px solid oklch(0.91 0 0)",
@@ -134,6 +175,24 @@ export default function ArticleActions({
         >
           打开文件夹
         </button>
+        {hasWechatConfig && article.articlePath && article.status !== "published" && (
+          <button
+            onClick={handlePublish}
+            disabled={publishing}
+            className="w-full px-4 h-9 text-sm rounded-[10px] font-medium transition-[background-color,opacity] duration-150 disabled:opacity-40 cursor-pointer"
+            style={{
+              background: "oklch(0.45 0.15 145)",
+              color: "oklch(1 0 0)",
+            }}
+          >
+            {publishing ? publishMsg : "发布到公众号"}
+          </button>
+        )}
+        {publishMsg && !publishing && publishMsg !== "" && (
+          <p className="text-xs text-center" style={{ color: publishMsg.includes("✓") ? "oklch(0.45 0.1 145)" : "oklch(0.63 0.14 52)" }}>
+            {publishMsg}
+          </p>
+        )}
         <button
           onClick={handleDelete}
           className="w-full px-4 h-9 text-sm rounded-[10px] transition-[background-color,opacity] duration-150 cursor-pointer"

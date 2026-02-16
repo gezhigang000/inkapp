@@ -219,6 +219,7 @@ export default function Create() {
           title={result.title}
           htmlContent={result.htmlContent}
           coverPath={result.coverPath}
+          articlePath={result.articlePath}
           fileType={result.fileType}
           metadataPath={result.metadataPath}
         />

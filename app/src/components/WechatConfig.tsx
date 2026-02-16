@@ -1,47 +1,49 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useConfig } from "../hooks/useConfig";
 
 export default function WechatConfig() {
   const { getConfig, updateConfig } = useConfig();
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
-  const [publicIp, setPublicIp] = useState<string>("");
+  const [testMsg, setTestMsg] = useState<{ type: "success" | "error" | "ip"; text: string } | null>(null);
   const [ipCopied, setIpCopied] = useState(false);
 
-  useEffect(() => {
-    fetch("https://api.ipify.org?format=json")
-      .then((r) => r.json())
-      .then((data) => setPublicIp(data.ip))
-      .catch(() => {
-        fetch("https://ifconfig.me/ip")
-          .then((r) => r.text())
-          .then((ip) => setPublicIp(ip.trim()))
-          .catch(() => setPublicIp("获取失败"));
-      });
-  }, []);
-
-  const copyIp = () => {
-    if (publicIp && publicIp !== "获取失败") {
-      navigator.clipboard.writeText(publicIp);
-      setIpCopied(true);
-      setTimeout(() => setIpCopied(false), 2000);
-    }
-  };
-
   const handleTest = async () => {
+    const appId = getConfig("WECHAT_APP_ID");
+    const appSecret = getConfig("WECHAT_APP_SECRET");
+    if (!appId || !appSecret) {
+      setTestMsg({ type: "error", text: "请先填写 AppID 和 AppSecret" });
+      return;
+    }
     setTesting(true);
-    setTestResult(null);
+    setTestMsg(null);
     try {
-      const appId = getConfig("WECHAT_APP_ID");
-      const appSecret = getConfig("WECHAT_APP_SECRET");
-      if (appId && appSecret) {
-        setTestResult("success");
+      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.access_token) {
+        setTestMsg({ type: "success", text: "连接成功，access_token 获取正常 ✓" });
+      } else if (data.errcode === 40164) {
+        // IP 不在白名单，从错误信息中提取真实 IP
+        const ipMatch = data.errmsg?.match(/invalid ip (\d+\.\d+\.\d+\.\d+)/);
+        const realIp = ipMatch?.[1] || "未知";
+        setTestMsg({
+          type: "ip",
+          text: `当前出口 IP: ${realIp}（未在白名单中，请添加到微信公众平台 → 基本配置 → IP 白名单）`,
+        });
       } else {
-        setTestResult("error");
+        setTestMsg({ type: "error", text: `错误 ${data.errcode}: ${data.errmsg}` });
       }
+    } catch (e) {
+      setTestMsg({ type: "error", text: `请求失败: ${e instanceof Error ? e.message : e}` });
     } finally {
       setTesting(false);
     }
+  };
+
+  const copyIp = (ip: string) => {
+    navigator.clipboard.writeText(ip);
+    setIpCopied(true);
+    setTimeout(() => setIpCopied(false), 2000);
   };
 
   const inputStyle = {
@@ -49,6 +51,9 @@ export default function WechatConfig() {
     background: "oklch(1 0 0)",
     color: "oklch(0.15 0.005 265)",
   };
+
+  // 从测试结果中提取 IP（用于复制按钮）
+  const detectedIp = testMsg?.type === "ip" ? testMsg.text.match(/IP: (\d+\.\d+\.\d+\.\d+)/)?.[1] : null;
 
   return (
     <div
@@ -66,30 +71,6 @@ export default function WechatConfig() {
       </h3>
       <p className="text-sm mb-4" style={{ color: "oklch(0.50 0 0)" }}>
         配置后可将创作的文章直接发布到微信公众号。在微信公众平台 → 开发 → 基本配置中获取。
-      </p>
-      <div
-        className="flex items-center gap-2 mb-4 px-3 py-2 rounded-[10px] text-sm"
-        style={{ background: "oklch(0.97 0.005 265)", border: "1px solid oklch(0.91 0 0)" }}
-      >
-        <span style={{ color: "oklch(0.40 0 0)" }}>当前公网 IP：</span>
-        <span className="font-mono font-medium" style={{ color: "oklch(0.15 0.005 265)" }}>
-          {publicIp || "获取中..."}
-        </span>
-        {publicIp && publicIp !== "获取失败" && (
-          <button
-            onClick={copyIp}
-            className="ml-auto px-2 py-0.5 text-xs rounded-md cursor-pointer transition-colors"
-            style={{
-              background: ipCopied ? "oklch(0.45 0.1 145)" : "oklch(0.27 0.005 265)",
-              color: "oklch(0.98 0.002 90)",
-            }}
-          >
-            {ipCopied ? "已复制 ✓" : "复制"}
-          </button>
-        )}
-      </div>
-      <p className="text-xs mb-4" style={{ color: "oklch(0.60 0 0)" }}>
-        请将此 IP 添加到微信公众平台 → 开发 → 基本配置 → IP 白名单中
       </p>
       <div className="space-y-4">
         <div>
@@ -135,15 +116,35 @@ export default function WechatConfig() {
         >
           {testing ? "测试中..." : "测试连接"}
         </button>
-        {testResult === "success" && (
-          <p className="text-sm" style={{ color: "oklch(0.40 0.005 265)" }}>
-            连接成功 ✓
+        {testMsg?.type === "success" && (
+          <p className="text-sm" style={{ color: "oklch(0.45 0.1 145)" }}>
+            {testMsg.text}
           </p>
         )}
-        {testResult === "error" && (
+        {testMsg?.type === "error" && (
           <p className="text-sm" style={{ color: "oklch(0.63 0.14 52)" }}>
-            连接失败，请检查配置
+            {testMsg.text}
           </p>
+        )}
+        {testMsg?.type === "ip" && (
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-[10px] text-sm"
+            style={{ background: "oklch(0.97 0.01 80)", border: "1px solid oklch(0.88 0.05 80)" }}
+          >
+            <span style={{ color: "oklch(0.40 0.08 60)" }}>{testMsg.text}</span>
+            {detectedIp && (
+              <button
+                onClick={() => copyIp(detectedIp)}
+                className="ml-auto shrink-0 px-2 py-0.5 text-xs rounded-md cursor-pointer"
+                style={{
+                  background: ipCopied ? "oklch(0.45 0.1 145)" : "oklch(0.27 0.005 265)",
+                  color: "oklch(0.98 0.002 90)",
+                }}
+              >
+                {ipCopied ? "已复制 ✓" : "复制 IP"}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

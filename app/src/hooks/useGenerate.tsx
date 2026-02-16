@@ -4,6 +4,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { SidecarEvent } from "../components/GenerateProgress";
 
+type Mode = "daily" | "topic" | "video";
+
+interface ModeParams {
+  topic?: string;
+  videoUrl?: string;
+}
+
 interface GenerateResult {
   title: string;
   htmlContent: string;
@@ -14,6 +21,10 @@ interface GenerateContextValue {
   events: SidecarEvent[];
   isRunning: boolean;
   result: GenerateResult | null;
+  mode: Mode;
+  params: ModeParams;
+  setMode: (mode: Mode) => void;
+  setParams: (params: ModeParams) => void;
   startGenerate: (payload: Record<string, unknown>) => Promise<void>;
   clearResult: () => void;
 }
@@ -24,6 +35,8 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<SidecarEvent[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<GenerateResult | null>(null);
+  const [mode, setMode] = useState<Mode>("topic");
+  const [params, setParams] = useState<ModeParams>({});
   const runningRef = useRef(false);
 
   const startGenerate = useCallback(async (payload: Record<string, unknown>) => {
@@ -77,7 +90,7 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <GenerateContext value={{ events, isRunning, result, startGenerate, clearResult }}>
+    <GenerateContext value={{ events, isRunning, result, mode, params, setMode, setParams, startGenerate, clearResult }}>
       {children}
     </GenerateContext>
   );

@@ -18,9 +18,9 @@ export default function MainLayout() {
         style={{ background: "oklch(0.985 0 0)", borderRight: "1px solid oklch(0.93 0 0)" }}
       >
         <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: "1px solid oklch(0.93 0 0)" }}>
-          <img src="/logo.png" alt="质取AI" className="w-7 h-7 rounded-[10px]" />
+          <img src="/logo.png" alt="Ink" className="w-7 h-7 rounded-[10px]" />
           <span className="text-[15px] font-semibold" style={{ color: "oklch(0.18 0.005 265)" }}>
-            质取AI
+            Ink
           </span>
         </div>
         <nav className="flex-1 px-3 py-2">

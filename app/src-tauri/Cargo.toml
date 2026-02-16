@@ -1,7 +1,7 @@
 [package]
 name = "zhiqu-ai"
 version = "0.1.0"
-description = "质取AI知识创作工具"
+description = "Ink — 一句话开始你的创作"
 authors = ["you"]
 edition = "2021"
 

@@ -69,7 +69,7 @@ export default function Settings() {
                   type="text"
                   value={getConfig("OUTPUT_DIR")}
                   onChange={(e) => updateConfig("OUTPUT_DIR", e.target.value)}
-                  placeholder="~/质取AI/articles"
+                  placeholder="~/Ink/articles"
                   className="flex-1 px-3 h-9 text-sm rounded-[10px] placeholder:text-[oklch(0.50_0_0)]"
                   style={{
                     border: "1px solid oklch(0.91 0 0)",
@@ -94,6 +94,54 @@ export default function Settings() {
         </div>
 
         <ArticleTemplates />
+
+        {/* OSS 云存储配置 */}
+        <div
+          className="rounded-[14px] p-6 transition-shadow duration-200"
+          style={{
+            background: "oklch(1 0 0)",
+            boxShadow: "0 1px 2px oklch(0 0 0 / 4%)",
+          }}
+        >
+          <h3
+            className="text-base font-semibold mb-1"
+            style={{ color: "oklch(0.15 0.005 265)" }}
+          >
+            云存储（OSS）
+          </h3>
+          <p className="text-sm mb-4" style={{ color: "oklch(0.50 0 0)" }}>
+            配置阿里云 OSS，创作的文章和封面图自动同步备份到云端。
+          </p>
+          <div className="space-y-3">
+            {[
+              { key: "OSS_BUCKET", label: "Bucket 名称", placeholder: "ink-client" },
+              { key: "OSS_ENDPOINT", label: "Endpoint", placeholder: "oss-cn-beijing.aliyuncs.com" },
+              { key: "OSS_ACCESS_KEY_ID", label: "AccessKey ID", placeholder: "LTAI..." },
+              { key: "OSS_ACCESS_KEY_SECRET", label: "AccessKey Secret", placeholder: "••••••", type: "password" as const },
+            ].map(({ key, label, placeholder, type }) => (
+              <div key={key}>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: "oklch(0.30 0.005 265)" }}
+                >
+                  {label}
+                </label>
+                <input
+                  type={type || "text"}
+                  value={getConfig(key)}
+                  onChange={(e) => updateConfig(key, e.target.value)}
+                  placeholder={placeholder}
+                  className="w-full px-3 h-9 text-sm rounded-[10px] placeholder:text-[oklch(0.50_0_0)]"
+                  style={{
+                    border: "1px solid oklch(0.91 0 0)",
+                    background: "oklch(1 0 0)",
+                    color: "oklch(0.15 0.005 265)",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
         <WechatConfig />
       </div>

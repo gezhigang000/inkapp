@@ -3,22 +3,17 @@ import { useConfig } from "../hooks/useConfig";
 import { useGenerate } from "../hooks/useGenerate";
 import { MODEL_PROVIDERS } from "../data/model-guides";
 import ModeSelector from "../components/ModeSelector";
-import type { ModeParams } from "../components/ModeSelector";
 import GenerateProgress from "../components/GenerateProgress";
 import ArticlePreview from "../components/ArticlePreview";
 import FileUpload from "../components/FileUpload";
 import type { UploadedFile } from "../components/FileUpload";
 
-type Mode = "daily" | "topic" | "video";
-
 export default function Create() {
   const { getConfig } = useConfig();
-  const { events, isRunning, result, startGenerate } = useGenerate();
+  const { events, isRunning, result, mode, params, setMode, setParams, startGenerate } = useGenerate();
   const [selectedProvider, setSelectedProvider] = useState(
     () => getConfig("selected_provider") || "deepseek"
   );
-  const [mode, setMode] = useState<Mode>("topic");
-  const [params, setParams] = useState<ModeParams>({});
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notice, setNotice] = useState("");
 
@@ -61,6 +56,18 @@ export default function Create() {
     const footerHtml = getConfig("ARTICLE_FOOTER_HTML");
     if (headerHtml) payload.header_html = headerHtml;
     if (footerHtml) payload.footer_html = footerHtml;
+
+    // OSS 云存储配置
+    const ossBucket = getConfig("OSS_BUCKET");
+    const ossEndpoint = getConfig("OSS_ENDPOINT");
+    const ossAk = getConfig("OSS_ACCESS_KEY_ID");
+    const ossSk = getConfig("OSS_ACCESS_KEY_SECRET");
+    if (ossBucket && ossEndpoint && ossAk && ossSk) {
+      payload.oss_bucket = ossBucket;
+      payload.oss_endpoint = ossEndpoint;
+      payload.oss_access_key_id = ossAk;
+      payload.oss_access_key_secret = ossSk;
+    }
 
     const fileTexts = uploadedFiles
       .filter((f) => f.extractedText)

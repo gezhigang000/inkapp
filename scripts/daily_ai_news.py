@@ -41,7 +41,7 @@ if PYLIB_DIR.exists():
 CONFIG_FILE = PROJECT_ROOT / "config.env"
 
 # 提示词：优先使用用户自定义目录，回退到内置默认
-_USER_PROMPTS_DIR = Path.home() / "质取AI" / "prompts"
+_USER_PROMPTS_DIR = Path.home() / "Ink" / "prompts"
 _BUNDLED_PROMPTS_DIR = PROJECT_ROOT / "prompts"
 
 def _resolve_prompt(filename):
@@ -54,7 +54,7 @@ def _resolve_prompt(filename):
 PROMPT_FILE = _resolve_prompt("prompt_template.txt")
 TOPIC_PROMPT_FILE = _resolve_prompt("topic_prompt_template.txt")
 QRCODE_IMAGE = PROJECT_ROOT / "assets" / "扫码_搜索联合传播样式-白色版-compressed.jpg"
-QRCODE_URL_CACHE = Path.home() / "质取AI" / ".qrcode_url.cache"
+QRCODE_URL_CACHE = Path.home() / "Ink" / ".qrcode_url.cache"
 
 
 # ============================================================
@@ -549,7 +549,7 @@ def split_article_if_needed(html_content, title):
         return [(title, html_content)]
 
     total_parts = len(groups)
-    base_title = title or "质取report"
+    base_title = title or "Ink"
     print(f"      [拆分] 文章过长（{len(html_content)} 字符），自动拆分为 {total_parts} 篇系列文章")
 
     result = []
@@ -917,11 +917,11 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
 
         # --- 副标题 ---
         sub_y = title_y + 12
-        sub_text = "质取tech"
+        sub_text = "Ink"
         draw.text((60, sub_y), sub_text, fill="#9ca3af", font=font_sub)
     else:
         # 无标题模式：只显示副标题，居中偏下
-        sub_text = "质取tech"
+        sub_text = "Ink"
         bbox = draw.textbbox((0, 0), sub_text, font=font_sub)
         sub_w = bbox[2] - bbox[0]
         draw.text(((W - sub_w) // 2, H - 50), sub_text, fill="#9ca3af", font=font_sub)
@@ -1267,7 +1267,7 @@ def run_video_analysis(video_url, config, args):
     from image_processor import process_images_in_html
 
     output_dir = config.get("OUTPUT_DIR", str(PROJECT_ROOT / "output" / "articles"))
-    author = config.get("AUTHOR", "质取report")
+    author = config.get("AUTHOR", "Ink")
     publish_mode = "publish" if args["publish"] else config.get("PUBLISH_MODE", "draft")
     timestamp = make_timestamp()
 
@@ -1407,7 +1407,7 @@ def main():
     from image_processor import process_images_in_html
 
     output_dir = config.get("OUTPUT_DIR", str(PROJECT_ROOT / "output" / "articles"))
-    author = config.get("AUTHOR", "质取report")
+    author = config.get("AUTHOR", "Ink")
     publish_mode = "publish" if args["publish"] else config.get("PUBLISH_MODE", "draft")
     topic = args["topic"]
     timestamp = make_timestamp()
@@ -1438,7 +1438,7 @@ def main():
     # 提取标题（拆分前提取，因为拆分后 header 可能被简化）
     title = extract_title(html_content)
     if not title:
-        title = "质取report"
+        title = "Ink"
 
     # 自动拆分：如果内容过长，按 PART 边界拆为系列文章
     articles = split_article_if_needed(html_content, title)

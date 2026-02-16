@@ -62,7 +62,12 @@ def handle_generate(params):
     file_contents = params.get("file_contents", "")  # 上传文件提取的文本
     header_html = params.get("header_html", "")  # 文章头部模板
     footer_html = params.get("footer_html", "")  # 文章尾部模板
-    default_output = os.path.join(os.path.expanduser("~"), "质取AI", "articles")
+    # OSS 云存储配置
+    oss_config = {}
+    for k in ["oss_bucket", "oss_endpoint", "oss_access_key_id", "oss_access_key_secret"]:
+        if params.get(k):
+            oss_config[k] = params[k]
+    default_output = os.path.join(os.path.expanduser("~"), "Ink", "articles")
     output_dir = config.get("OUTPUT_DIR", default_output)
     timestamp = make_timestamp()
 
@@ -128,6 +133,23 @@ def handle_generate(params):
                 cover_theme=variation.get("cover_theme"),
             )
             img_paths.append(str(cover_path) if cover_path else "")
+
+        # 同步到 OSS
+        if len(oss_config) == 4:
+            emit("progress", stage="uploading", message="正在同步到云端...", percent=90)
+            try:
+                for i in range(len(articles)):
+                    # 上传文章 HTML
+                    oss_article_key = f"articles/{timestamp}/{os.path.basename(filepaths[i])}"
+                    _upload_to_oss(filepaths[i], oss_article_key, oss_config)
+                    # 上传封面图
+                    if img_paths[i] and os.path.exists(img_paths[i]):
+                        oss_cover_key = f"articles/{timestamp}/{os.path.basename(img_paths[i])}"
+                        _upload_to_oss(img_paths[i], oss_cover_key, oss_config)
+                emit("progress", stage="uploading", message="云端同步完成", percent=95)
+            except Exception as e:
+                emit("progress", stage="uploading",
+                     message=f"OSS 同步失败（不影响本地文件）: {e}")
 
         # 保存元数据
         meta_dir = os.path.dirname(filepaths[0]) if filepaths else output_dir
@@ -200,7 +222,7 @@ def handle_validate_key(params):
 def handle_list_articles(params):
     """扫描 output 目录，列出已生成的文章"""
     output_dir = params.get("output_dir",
-                            os.path.join(os.path.expanduser("~"), "质取AI", "articles"))
+                            os.path.join(os.path.expanduser("~"), "Ink", "articles"))
     articles = []
 
     if os.path.exists(output_dir):
@@ -236,7 +258,7 @@ def handle_list_articles(params):
 def handle_get_config(params):
     """读取 JSON 配置文件"""
     config_path = params.get("config_path",
-                             os.path.expanduser("~/质取AI/config.json"))
+                             os.path.expanduser("~/Ink/config.json"))
     config = {}
     if os.path.exists(config_path):
         with open(config_path, "r", encoding="utf-8") as f:
@@ -248,7 +270,7 @@ def handle_get_config(params):
 def handle_save_config(params):
     """保存 JSON 配置文件"""
     config_path = params.get("config_path",
-                             os.path.expanduser("~/质取AI/config.json"))
+                             os.path.expanduser("~/Ink/config.json"))
     config_data = params.get("config", {})
 
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
@@ -278,7 +300,7 @@ def handle_delete_article(params):
 
     article_id = params.get("article_id", "")
     output_dir = params.get("output_dir",
-                            os.path.join(os.path.expanduser("~"), "质取AI", "articles"))
+                            os.path.join(os.path.expanduser("~"), "Ink", "articles"))
 
     if not article_id:
         emit("error", code="MISSING_PARAMS", message="缺少 article_id")
@@ -306,6 +328,17 @@ def handle_delete_article(params):
     else:
         emit("error", code="NOT_FOUND",
              message=f"未找到文章: {article_id}")
+
+
+def _upload_to_oss(local_path, oss_key, oss_config):
+    """上传文件到阿里云 OSS"""
+    import oss2
+    auth = oss2.Auth(oss_config["oss_access_key_id"], oss_config["oss_access_key_secret"])
+    endpoint = oss_config["oss_endpoint"]
+    if not endpoint.startswith("http"):
+        endpoint = f"https://{endpoint}"
+    bucket = oss2.Bucket(auth, endpoint, oss_config["oss_bucket"])
+    bucket.put_object_from_file(oss_key, local_path)
 
 
 def handle_render_template(params):

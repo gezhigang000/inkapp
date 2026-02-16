@@ -230,21 +230,24 @@ def make_timestamp():
 # ============================================================
 
 
-def generate_article(topic=None, config=None, custom_prompt=None):
+def generate_article(topic=None, config=None, custom_prompt=None, file_contents=None):
     """调用 LLM 生成文章。topic 指定时走深度调研，否则走日报模式。
     custom_prompt: 模板自定义提示词，包含 {{TOPIC}} 占位符，覆盖默认提示词。
+    file_contents: 用户上传的文件文本内容，单独传递避免污染 topic。
     """
     if config is None:
         config = {}
     today = datetime.now().strftime("%Y-%m-%d")
 
     if topic:
-        return _generate_topic_research(topic, today, config, custom_prompt=custom_prompt)
+        return _generate_topic_research(topic, today, config,
+                                        custom_prompt=custom_prompt,
+                                        file_contents=file_contents)
     else:
         return _generate_daily_news(today, config, custom_prompt=custom_prompt)
 
 
-def _generate_topic_research(topic, today, config, custom_prompt=None):
+def _generate_topic_research(topic, today, config, custom_prompt=None, file_contents=None):
     """深度调研模式：围绕指定 topic 搜索官方资料做深度分析"""
     from llm_adapter import generate, LLMError
     from search_adapter import search_and_fetch
@@ -257,14 +260,32 @@ def _generate_topic_research(topic, today, config, custom_prompt=None):
             prompt_template = f.read()
         prompt = f"今天是 {today}。\n\n" + prompt_template.replace("{{TOPIC}}", topic)
 
+    # 有上传文件时：跳过联网搜索，将数据附加到 prompt 末尾
+    has_file_data = bool(file_contents and file_contents.strip())
+    if has_file_data:
+        prompt += (
+            f"\n\n{'='*60}\n"
+            f"以下是用户上传的原始数据，请务必基于这些数据进行深入分析，"
+            f"引用具体数字和内容，不要泛泛描述分析方法。\n"
+            f"{'='*60}\n\n"
+            f"{file_contents}"
+        )
+
     provider = config.get("LLM_PROVIDER", "claude").lower()
-    print(f"[1/4] 正在调用 AI 深度调研「{topic}」...")
-    print(f"      模式: 深度调研（搜索官方文档和英文资料）")
+    short_topic = topic[:80] + "..." if len(topic) > 80 else topic
+    if has_file_data:
+        print(f"[1/4] 正在调用 AI 分析上传数据「{short_topic}」...")
+        print(f"      模式: 数据分析（基于上传文件，跳过联网搜索）")
+    else:
+        print(f"[1/4] 正在调用 AI 深度调研「{short_topic}」...")
+        print(f"      模式: 深度调研（搜索官方文档和英文资料）")
     print(f"      提供商: {provider}")
-    print("      (这一步需要联网搜索，请耐心等待)")
 
     try:
-        if provider == "claude":
+        if has_file_data:
+            # 数据分析模式：不需要联网搜索，直接调用 LLM
+            output = generate(prompt, config, timeout=600)
+        elif provider == "claude":
             output = generate(prompt, config, timeout=1200, need_search=True)
         else:
             context = search_and_fetch(

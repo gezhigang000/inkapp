@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 
-const CONFIG_KEY = "zhiqu-config";
+const CONFIG_KEY = "ink-config";
 
 function loadConfig(): Record<string, string> {
   try {

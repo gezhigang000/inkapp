@@ -146,7 +146,7 @@ pub async fn run_sidecar(
 #[tauri::command]
 pub async fn write_temp_html(content: String) -> Result<String, String> {
     let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join("zhiqu-preview.html");
+    let file_path = temp_dir.join("ink-preview.html");
     std::fs::write(&file_path, &content)
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
     Ok(file_path.to_string_lossy().to_string())

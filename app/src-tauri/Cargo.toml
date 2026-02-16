@@ -1,12 +1,12 @@
 [package]
-name = "zhiqu-ai"
+name = "ink"
 version = "0.1.0"
 description = "Ink — 一句话开始你的创作"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "zhiqu_ai_lib"
+name = "ink_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

@@ -124,10 +124,21 @@ def handle_generate(params):
         variation = pick_daily_variation(today)
         effective_topic = topic if topic else variation.get("topic")
 
-        # 如果有上传文件内容，附加到 topic 中供 LLM 分析
+        # 如果有上传文件内容，构建数据分析专用提示
         if file_contents:
-            file_context = f"\n\n以下是用户上传的参考资料，请基于这些数据进行分析和创作：\n\n{file_contents}"
-            effective_topic = (effective_topic or "数据分析") + file_context
+            user_topic = effective_topic or "数据分析报告"
+            effective_topic = (
+                f"{user_topic}\n\n"
+                f"【重要】以下是用户上传的原始数据，你必须对数据进行深入分析，"
+                f"包括但不限于：\n"
+                f"1. 数据概览：总行数、关键字段、数据范围\n"
+                f"2. 核心发现：从数据中提取关键趋势、排名、对比、异常值\n"
+                f"3. 具体数字：引用数据中的实际数值，不要泛泛而谈\n"
+                f"4. 可视化建议：用表格呈现关键数据对比\n"
+                f"5. 结论与建议：基于数据得出的结论\n\n"
+                f"禁止只描述分析方法而不分析数据本身。必须引用数据中的具体数字和内容。\n\n"
+                f"=== 原始数据开始 ===\n{file_contents}\n=== 原始数据结束 ==="
+            )
 
         emit("progress", stage="generating", message="正在生成文章...", percent=20)
         html_content = generate_article(topic=effective_topic, config=config,

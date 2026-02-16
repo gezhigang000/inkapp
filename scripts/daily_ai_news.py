@@ -651,7 +651,7 @@ def save_article(timestamp, html_content, output_dir, suffix=""):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    filename = f"{timestamp}-ai-daily{suffix}.html"
+    filename = f"{timestamp}-report{suffix}.html"
     filepath = output_path / filename
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -996,7 +996,7 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
     # 保存
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    img_path = output_path / f"{timestamp}-ai-daily.png"
+    img_path = output_path / f"{timestamp}-report.png"
     img.save(str(img_path), "PNG", quality=95)
 
     print(f"[3/4] 封面图已生成: {img_path}")

@@ -155,8 +155,8 @@ export default function Create() {
         </button>
       </div>
 
-      {/* 输入区：生成中折叠 */}
-      {!isRunning && !result && (
+      {/* 输入区：生成中折叠，完成后可编辑重新创作 */}
+      {!isRunning && (
         <>
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "oklch(0.30 0.005 265)" }}>

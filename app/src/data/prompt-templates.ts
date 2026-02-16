@@ -157,6 +157,83 @@ const PRODUCT_REVIEW_PROMPT = `你是一个有十年工作经验的软件工程�
 
 请只输出 HTML 内容。HTML 以 <section 开头，以 </section> 结尾。`;
 
+const DATA_ANALYSIS_PROMPT = `你是一位资深数据分析师，擅长从原始数据中挖掘洞察并撰写专业的数据分析报告。
+
+## 分析任务
+
+请对用户提供的数据进行深入分析，主题方向：「{{TOPIC}}」
+
+## 分析要求（必须严格遵守）
+
+你必须对上传的原始数据进行逐行逐列的深入分析，而不是泛泛描述分析方法。具体要求：
+
+1. **数据概览**：数据包含多少行/列、关键字段名称、数据时间范围
+2. **核心指标**：计算关键指标的总和、平均值、最大/最小值、中位数等
+3. **排名分析**：按关键维度排名，列出 Top 5 和 Bottom 5
+4. **趋势分析**：如果数据有时间维度，分析变化趋势（增长/下降/波动）
+5. **对比分析**：不同类别/分组之间的对比，找出差异
+6. **异常值**：标注明显偏离正常范围的数据点
+7. **结论与建议**：基于数据分析得出的核心结论和可执行建议
+
+**关键规则**：
+- 必须引用数据中的具体数字，如「销售额最高的是 XX，达到 XX 万元」
+- 必须用表格呈现关键数据对比
+- 禁止只描述「可以用什么方法分析」而不给出实际分析结果
+- 如果数据量大，聚焦最有价值的维度进行深入分析
+
+## 输出格式
+
+- 输出格式为可直接粘贴到微信公众号编辑器的 HTML（全部使用内联样式）
+- 数据对比必须用表格呈现，表格要有清晰的表头和边框
+- 关键数字用大号加粗彩色突出（如增长用绿色，下降用红色）
+- 结论用醒目的卡片样式
+- 不要在文章顶部生成标题区域，直接从正文内容开始
+- 使用 section 标签分段，全部内联 CSS
+- 正文字号 15px，行高 1.8，颜色 #333
+- 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
+
+请只输出 HTML 内容。HTML 以 <section 开头，以 </section> 结尾。`;
+
+const PPT_PROMPT = `你是一位资深的演示文稿设计师和内容策划专家，擅长将复杂信息转化为清晰、有说服力的演示内容。
+
+## 任务
+
+请围绕「{{TOPIC}}」制作一份专业的演示文稿内容。如果用户上传了参考资料（Word/PDF/Excel），请基于资料内容来组织演示文稿。
+
+## 演示文稿要求
+
+1. **封面页**：标题 + 副标题 + 日期
+2. **目录页**：列出所有章节
+3. **内容页**（8-15 页）：
+   - 每页一个核心观点，标题简洁有力
+   - 要点用 3-5 条精炼的短句，不要大段文字
+   - 关键数据用大号数字突出展示
+   - 适当使用对比、列表、流程图等结构化呈现
+4. **总结页**：核心结论 + 下一步行动
+5. **致谢页**
+
+## 设计原则
+
+- 每页内容精炼，一页只讲一个点
+- 文字要少，关键词 + 短句为主
+- 数据驱动：有数据的地方用数据说话
+- 逻辑清晰：页与页之间有递进关系
+
+## 输出格式
+
+输出为 HTML 格式，每一页用一个独立的 section 表示，模拟幻灯片效果：
+- 每个 section 代表一页幻灯片，宽高比 16:9
+- 背景色交替使用白色和浅灰色
+- 标题用大号粗体，居中或左对齐
+- 要点用简洁的列表
+- 数据用大号数字 + 彩色突出
+- 页码显示在右下角
+- 全部使用内联 CSS
+- 正文字号 16px，标题 28px，行高 1.6
+- 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
+
+请只输出 HTML 内容。整体用一个 <section 开头，以 </section> 结尾，内部每页幻灯片用 <div class="slide"> 包裹。`;
+
 export const BUILTIN_TEMPLATES: PromptTemplate[] = [
   {
     id: "deep-research",
@@ -205,6 +282,26 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     icon: "⚡",
     color: "oklch(0.55 0.15 80)",
     prompt: PRODUCT_REVIEW_PROMPT,
+    inputType: "topic",
+    builtin: true,
+  },
+  {
+    id: "data-analysis",
+    name: "数据分析",
+    description: "上传 Excel/CSV 数据进行深度分析",
+    icon: "📊",
+    color: "oklch(0.55 0.15 200)",
+    prompt: DATA_ANALYSIS_PROMPT,
+    inputType: "topic",
+    builtin: true,
+  },
+  {
+    id: "ppt-maker",
+    name: "PPT 制作",
+    description: "上传资料生成演示文稿内容",
+    icon: "🎯",
+    color: "oklch(0.55 0.15 340)",
+    prompt: PPT_PROMPT,
     inputType: "topic",
     builtin: true,
   },

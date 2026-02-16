@@ -8,7 +8,12 @@ import json
 import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
+# PyInstaller 打包后，数据文件在 sys._MEIPASS 目录下
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    PROJECT_ROOT = sys._MEIPASS
+else:
+    PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
 # 确保 scripts 目录在 import 路径中
 if SCRIPT_DIR not in sys.path:
@@ -30,7 +35,7 @@ def handle_generate(params):
     """处理文章生成请求，集成 daily_ai_news.py 核心逻辑"""
     from datetime import datetime
     from daily_ai_news import (
-        load_config, generate_article, generate_cover_image,
+        generate_article, generate_cover_image,
         extract_html, extract_title, split_article_if_needed,
         make_timestamp, run_video_analysis, save_article,
         pick_daily_variation, append_footer,
@@ -38,12 +43,16 @@ def handle_generate(params):
 
     emit("progress", stage="init", message="正在加载配置...")
 
-    # 加载配置，允许前端参数覆盖
-    config = load_config()
+    # 配置完全从前端参数构建，不依赖 config.env 文件
+    config = {}
     if params.get("provider"):
         config["LLM_PROVIDER"] = params["provider"]
     for key in ["DEEPSEEK_API_KEY", "GLM_API_KEY", "DOUBAO_API_KEY",
-                "KIMI_API_KEY", "OPENAI_API_KEY"]:
+                "KIMI_API_KEY", "OPENAI_API_KEY",
+                "DEEPSEEK_MODEL", "GLM_MODEL", "DOUBAO_MODEL",
+                "KIMI_MODEL", "OPENAI_MODEL",
+                "TAVILY_API_KEY", "SERPAPI_API_KEY",
+                "SEARCH_PROVIDER", "OUTPUT_DIR"]:
         if params.get(key):
             config[key] = params[key]
 
@@ -51,10 +60,13 @@ def handle_generate(params):
     topic = params.get("topic", "")
     video_url = params.get("video_url", "")
     file_contents = params.get("file_contents", "")  # 上传文件提取的文本
-    output_dir = config.get("OUTPUT_DIR", os.path.join(PROJECT_ROOT, "output", "articles"))
+    header_html = params.get("header_html", "")  # 文章头部模板
+    footer_html = params.get("footer_html", "")  # 文章尾部模板
+    default_output = os.path.join(os.path.expanduser("~"), "质取AI", "articles")
+    output_dir = config.get("OUTPUT_DIR", default_output)
     timestamp = make_timestamp()
 
-    try:
+    try:  # noqa: E501 — 捕获 SystemExit（daily_ai_news 内部 sys.exit）
         # ---------- 视频分析模式 ----------
         if mode == "video" and video_url:
             emit("progress", stage="analyzing", message="正在分析视频...")
@@ -100,6 +112,11 @@ def handle_generate(params):
         img_paths = []
         for idx, (part_title, part_html) in enumerate(articles):
             part_html = append_footer(part_html)
+            # 插入用户自定义头部/尾部模板
+            if header_html:
+                part_html = header_html + part_html
+            if footer_html:
+                part_html = part_html + footer_html
             suffix = f"-part{idx + 1}" if is_series else ""
             filepath = save_article(timestamp, part_html, output_dir, suffix=suffix)
             filepaths.append(str(filepath))
@@ -135,6 +152,8 @@ def handle_generate(params):
              article_path=filepaths[0], metadata_path=meta_path,
              article_count=len(articles))
 
+    except SystemExit as e:
+        emit("error", code="GENERATION_ERROR", message=f"生成过程异常退出 (code={e.code})")
     except Exception as e:
         emit("error", code="GENERATION_ERROR", message=str(e))
 
@@ -181,7 +200,7 @@ def handle_validate_key(params):
 def handle_list_articles(params):
     """扫描 output 目录，列出已生成的文章"""
     output_dir = params.get("output_dir",
-                            os.path.join(PROJECT_ROOT, "output", "articles"))
+                            os.path.join(os.path.expanduser("~"), "质取AI", "articles"))
     articles = []
 
     if os.path.exists(output_dir):
@@ -259,7 +278,7 @@ def handle_delete_article(params):
 
     article_id = params.get("article_id", "")
     output_dir = params.get("output_dir",
-                            os.path.join(PROJECT_ROOT, "output", "articles"))
+                            os.path.join(os.path.expanduser("~"), "质取AI", "articles"))
 
     if not article_id:
         emit("error", code="MISSING_PARAMS", message="缺少 article_id")
@@ -287,6 +306,54 @@ def handle_delete_article(params):
     else:
         emit("error", code="NOT_FOUND",
              message=f"未找到文章: {article_id}")
+
+
+def handle_render_template(params):
+    """用 AI 将纯文本渲染为微信公众号风格的 HTML 片段"""
+    from llm_adapter import generate, LLMError
+
+    text = params.get("text", "").strip()
+    position = params.get("position", "footer")  # header or footer
+    if not text:
+        emit("error", code="MISSING_PARAMS", message="缺少 text 参数")
+        return
+
+    config = {}
+    provider = params.get("provider", "deepseek")
+    config["LLM_PROVIDER"] = provider
+    for key in ["DEEPSEEK_API_KEY", "GLM_API_KEY", "DOUBAO_API_KEY",
+                "KIMI_API_KEY", "OPENAI_API_KEY",
+                "DEEPSEEK_MODEL", "GLM_MODEL", "DOUBAO_MODEL",
+                "KIMI_MODEL", "OPENAI_MODEL"]:
+        if params.get(key):
+            config[key] = params[key]
+
+    border = "border-bottom" if position == "header" else "border-top"
+    prompt = f"""请将以下文字渲染为微信公众号文章{('头部' if position == 'header' else '尾部')}的 HTML 片段。
+
+要求：
+- 全部使用内联 CSS 样式
+- 风格简洁美观，适合微信公众号
+- 字体：-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif
+- 正文字号 14-15px，颜色 #333 或 #666
+- 居中对齐
+- 用 section 标签包裹，带 {border} 分隔线
+- 只输出 HTML 代码，不要任何说明文字
+
+文字内容：
+{text}"""
+
+    try:
+        html = generate(prompt, config, timeout=60, need_search=False)
+        if html:
+            # 提取 HTML 部分
+            from daily_ai_news import extract_html
+            extracted = extract_html(html)
+            emit("result", status="success", content=extracted or html)
+        else:
+            emit("error", code="RENDER_FAILED", message="渲染失败，未获得输出")
+    except Exception as e:
+        emit("error", code="RENDER_ERROR", message=str(e))
 
 
 def handle_extract_files(params):
@@ -406,6 +473,7 @@ def main():
         "read_file": handle_read_file,
         "delete_article": handle_delete_article,
         "extract_files": handle_extract_files,
+        "render_template": handle_render_template,
     }
 
     handler = handlers.get(action)

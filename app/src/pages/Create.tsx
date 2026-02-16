@@ -1,12 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { useState, useCallback } from "react";
 import { useConfig } from "../hooks/useConfig";
+import { useGenerate } from "../hooks/useGenerate";
 import { MODEL_PROVIDERS } from "../data/model-guides";
 import ModeSelector from "../components/ModeSelector";
 import type { ModeParams } from "../components/ModeSelector";
 import GenerateProgress from "../components/GenerateProgress";
-import type { SidecarEvent } from "../components/GenerateProgress";
 import ArticlePreview from "../components/ArticlePreview";
 import FileUpload from "../components/FileUpload";
 import type { UploadedFile } from "../components/FileUpload";
@@ -15,169 +13,138 @@ type Mode = "daily" | "topic" | "video";
 
 export default function Create() {
   const { getConfig } = useConfig();
+  const { events, isRunning, result, startGenerate } = useGenerate();
   const [selectedProvider, setSelectedProvider] = useState(
     () => getConfig("selected_provider") || "deepseek"
   );
-  const [mode, setMode] = useState<Mode>("daily");
+  const [mode, setMode] = useState<Mode>("topic");
   const [params, setParams] = useState<ModeParams>({});
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [events, setEvents] = useState<SidecarEvent[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [result, setResult] = useState<{
-    title: string;
-    htmlContent: string;
-    coverPath?: string;
-  } | null>(null);
-  const unlistenRef = useRef<(() => void) | null>(null);
-
-  // 组件卸载时清理事件监听
-  useEffect(() => {
-    return () => {
-      unlistenRef.current?.();
-    };
-  }, []);
+  const [notice, setNotice] = useState("");
 
   const canGenerate = useCallback(() => {
     if (isRunning) return false;
     if (mode === "topic" && !params.topic?.trim()) return false;
+    if (mode === "daily" && !params.topic?.trim()) return false;
     if (mode === "video" && !params.videoUrl?.trim()) return false;
     return true;
   }, [isRunning, mode, params]);
 
-  // 获取当前 provider 需要的 Key
   const getProviderKeyName = (providerId: string): string | undefined => {
     const provider = MODEL_PROVIDERS.find((p) => p.id === providerId);
     if (!provider) return undefined;
-    const pwdKey = provider.configKeys.find((ck) => ck.type === "password");
-    return pwdKey?.key;
+    return provider.configKeys.find((ck) => ck.type === "password")?.key;
   };
 
   const handleGenerate = async () => {
-    // 校验 API Key 已配置
     const keyName = getProviderKeyName(selectedProvider);
     if (keyName && !getConfig(keyName)) {
-      setEvents([
-        {
-          type: "error",
-          message: `请先在「模型配置」页面配置 ${selectedProvider} 的 API Key`,
-        },
-      ]);
+      setNotice(`请先在「模型配置」页面配置 ${selectedProvider} 的 API Key`);
+      setTimeout(() => setNotice(""), 4000);
       return;
     }
+    const payload: Record<string, unknown> = {
+      action: "generate",
+      mode,
+      topic: params.topic || undefined,
+      video_url: params.videoUrl || undefined,
+      provider: selectedProvider,
+    };
+    if (keyName) payload[keyName] = getConfig(keyName);
+    // Pass model name config
+    const modelKey = MODEL_PROVIDERS.find(p => p.id === selectedProvider)
+      ?.configKeys.find(ck => ck.type !== "password")?.key;
+    if (modelKey && getConfig(modelKey)) payload[modelKey] = getConfig(modelKey);
 
-    setEvents([]);
-    setResult(null);
-    setIsRunning(true);
+    // 文章头尾模板
+    const headerHtml = getConfig("ARTICLE_HEADER_HTML");
+    const footerHtml = getConfig("ARTICLE_FOOTER_HTML");
+    if (headerHtml) payload.header_html = headerHtml;
+    if (footerHtml) payload.footer_html = footerHtml;
 
-    try {
-      const unlisten = await listen<SidecarEvent>(
-        "sidecar-event",
-        (event) => {
-          const data = event.payload;
-          setEvents((prev) => [...prev, data]);
-          if (data.type === "result" && data.status === "success") {
-            // 读取生成的文章文件内容
-            readArticleFile(data.article_path || "").then((html) => {
-              setResult({
-                title: data.title || "未命名文章",
-                htmlContent: html,
-                coverPath: undefined,
-              });
-            });
-          }
-          if (data.type === "error" || data.type === "result") {
-            setIsRunning(false);
-          }
-        }
-      );
-      unlistenRef.current = unlisten;
+    const fileTexts = uploadedFiles
+      .filter((f) => f.extractedText)
+      .map((f) => `=== ${f.name} ===\n${f.extractedText}`)
+      .join("\n\n");
+    if (fileTexts) payload.file_contents = fileTexts;
 
-      // 只传当前 provider 相关的 Key
-      const payload: Record<string, unknown> = {
-        action: "generate",
-        mode,
-        topic: params.topic || undefined,
-        video_url: params.videoUrl || undefined,
-        provider: selectedProvider,
-      };
-      if (keyName) {
-        payload[keyName] = getConfig(keyName);
-      }
-      // 附加上传文件的提取内容
-      const fileTexts = uploadedFiles
-        .filter((f) => f.extractedText)
-        .map((f) => `=== ${f.name} ===\n${f.extractedText}`)
-        .join("\n\n");
-      if (fileTexts) {
-        payload.file_contents = fileTexts;
-      }
-
-      await invoke("run_sidecar", {
-        commandJson: JSON.stringify(payload),
-      });
-
-      unlisten();
-      unlistenRef.current = null;
-    } catch (err) {
-      setEvents((prev) => [
-        ...prev,
-        {
-          type: "error" as const,
-          message: err instanceof Error ? err.message : String(err),
-        },
-      ]);
-      setIsRunning(false);
-      unlistenRef.current?.();
-      unlistenRef.current = null;
-    }
+    startGenerate(payload);
   };
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">创作</h1>
+  const hasFailed = !isRunning && events.length > 0 && events.some(e => e.type === "error");
+  const buttonLabel = isRunning ? "创作中..." : (hasFailed || result) ? "重新创作" : "开始创作";
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          选择模型
-        </label>
+  return (
+    <div className="p-6 space-y-4" style={{ maxWidth: "100%" }}>
+      {notice && (
+        <div
+          className="px-4 py-2 text-sm rounded-[10px]"
+          style={{ background: "oklch(0.95 0.05 52)", color: "oklch(0.35 0.1 52)" }}
+        >
+          {notice}
+        </div>
+      )}
+      {/* 顶部操作栏 */}
+      <div className="flex items-center gap-3">
         <select
           value={selectedProvider}
           onChange={(e) => setSelectedProvider(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg
-            focus:outline-none focus:ring-2 focus:ring-blue-500
-            focus:border-transparent bg-white"
+          disabled={isRunning}
+          className="px-3 h-9 text-sm rounded-[10px] transition-[background-color] duration-150 disabled:opacity-40"
+          style={{
+            border: "1px solid oklch(0.91 0 0)",
+            background: "oklch(1 0 0)",
+            color: "oklch(0.15 0.005 265)",
+          }}
         >
           {MODEL_PROVIDERS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} - {p.description}
-            </option>
+            <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
+        <div className="flex-1" />
+        <button
+          onClick={handleGenerate}
+          disabled={!canGenerate()}
+          className="px-6 h-9 text-sm font-medium rounded-[10px] transition-[background-color,opacity] duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: isRunning ? "oklch(0.50 0 0)" : "oklch(0.27 0.005 265)",
+            color: "oklch(0.98 0.002 90)",
+          }}
+        >
+          {buttonLabel}
+        </button>
       </div>
 
-      <ModeSelector
-        mode={mode}
-        onModeChange={setMode}
-        params={params}
-        onParamsChange={setParams}
-      />
-
-      <FileUpload files={uploadedFiles} onFilesChange={setUploadedFiles} />
-
-      <button
-        onClick={handleGenerate}
-        disabled={!canGenerate()}
-        className="w-full py-3 px-4 text-sm font-semibold text-white
-          bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300
-          disabled:cursor-not-allowed rounded-xl transition-colors"
-      >
-        {isRunning ? "生成中..." : "开始生成"}
-      </button>
-
-      {events.length > 0 && (
-        <GenerateProgress events={events} isRunning={isRunning} />
+      {/* 输入区：生成中折叠 */}
+      {!isRunning && !result && (
+        <>
+          <ModeSelector
+            mode={mode}
+            onModeChange={setMode}
+            params={params}
+            onParamsChange={setParams}
+          />
+          <FileUpload files={uploadedFiles} onFilesChange={setUploadedFiles} />
+        </>
       )}
 
+      {/* 生成中：显示摘要 + 日志 */}
+      {(isRunning || events.length > 0) && (
+        <>
+          {isRunning && (
+            <div
+              className="text-sm px-4 py-2 rounded-[10px]"
+              style={{ background: "oklch(0.965 0 0)", color: "oklch(0.50 0 0)" }}
+            >
+              {mode === "topic" ? `主题: ${params.topic || "自动选题"}` : mode === "video" ? `视频: ${params.videoUrl}` : "日报模式"}
+              {uploadedFiles.length > 0 && ` · ${uploadedFiles.length} 个附件`}
+            </div>
+          )}
+          <GenerateProgress events={events} isRunning={isRunning} />
+        </>
+      )}
+
+      {/* 文章预览 */}
       {result && (
         <ArticlePreview
           title={result.title}
@@ -187,26 +154,4 @@ export default function Create() {
       )}
     </div>
   );
-}
-
-async function readArticleFile(filePath: string): Promise<string> {
-  if (!filePath) return "<p>文章路径为空</p>";
-  try {
-    const result = await invoke<string>("run_sidecar", {
-      commandJson: JSON.stringify({
-        action: "read_file",
-        path: filePath,
-      }),
-    });
-    // 从 JSON Lines 输出中提取 content
-    for (const line of result.split("\n")) {
-      try {
-        const parsed = JSON.parse(line);
-        if (parsed.type === "result" && parsed.content) return parsed.content;
-      } catch { /* skip non-JSON lines */ }
-    }
-    return "<p>无法读取文章内容</p>";
-  } catch {
-    return "<p>读取文章失败</p>";
-  }
 }

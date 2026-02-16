@@ -74,63 +74,74 @@ export default function ArticleActions({
     setConfirmDelete(false);
   };
 
+  const btnOutline = {
+    border: "1px solid oklch(0.91 0 0)",
+    color: "oklch(0.30 0.005 265)",
+    background: "transparent",
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200
-      p-5 shadow-sm">
+    <div
+      className="rounded-[14px] p-5 transition-shadow duration-200"
+      style={{
+        background: "oklch(1 0 0)",
+        boxShadow: "0 1px 2px oklch(0 0 0 / 4%)",
+      }}
+    >
       <div className="flex items-start justify-between mb-4">
-        <h3 className="text-base font-semibold text-gray-900
-          line-clamp-2 leading-snug flex-1 mr-3">
+        <h3
+          className="text-base font-semibold line-clamp-2 leading-snug flex-1 mr-3"
+          style={{ color: "oklch(0.15 0.005 265)" }}
+        >
           {article.title}
         </h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600
-            text-lg leading-none shrink-0 cursor-pointer"
+          className="text-lg leading-none shrink-0 cursor-pointer transition-opacity duration-150 hover:opacity-60"
+          style={{ color: "oklch(0.50 0 0)" }}
         >
           ✕
         </button>
       </div>
-      <p className="text-xs text-gray-400 mb-4">{article.date}</p>
+      <p className="text-xs mb-4" style={{ color: "oklch(0.50 0 0)" }}>
+        {article.date}
+      </p>
       <div className="flex flex-col gap-2">
         <button
           onClick={handlePreview}
           disabled={!article.articlePath}
-          className="w-full px-4 py-2 text-sm rounded-lg
-            bg-blue-600 text-white hover:bg-blue-700
-            disabled:opacity-40 disabled:cursor-not-allowed
-            transition-colors cursor-pointer"
+          className="w-full px-4 h-9 text-sm rounded-[10px] font-medium transition-[background-color,opacity] duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          style={{
+            background: "oklch(0.27 0.005 265)",
+            color: "oklch(0.98 0.002 90)",
+          }}
         >
           预览
         </button>
         <button
           onClick={handleCopyHtml}
           disabled={!article.articlePath}
-          className="w-full px-4 py-2 text-sm rounded-lg
-            border border-gray-200 text-gray-700
-            hover:bg-gray-50 disabled:opacity-40
-            disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="w-full px-4 h-9 text-sm rounded-[10px] transition-[background-color,opacity] duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          style={btnOutline}
         >
           {copied ? "已复制 ✓" : "复制 HTML"}
         </button>
         <button
           onClick={handleOpenFolder}
           disabled={!article.articlePath}
-          className="w-full px-4 py-2 text-sm rounded-lg
-            border border-gray-200 text-gray-700
-            hover:bg-gray-50 disabled:opacity-40
-            disabled:cursor-not-allowed transition-colors
-            cursor-pointer"
+          className="w-full px-4 h-9 text-sm rounded-[10px] transition-[background-color,opacity] duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          style={btnOutline}
         >
           打开文件夹
         </button>
         <button
           onClick={handleDelete}
-          className={`w-full px-4 py-2 text-sm rounded-lg
-            transition-colors cursor-pointer ${
-              confirmDelete
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "border border-red-200 text-red-600 hover:bg-red-50"
-            }`}
+          className="w-full px-4 h-9 text-sm rounded-[10px] transition-[background-color,opacity] duration-150 cursor-pointer"
+          style={
+            confirmDelete
+              ? { background: "oklch(0.63 0.14 52)", color: "oklch(0.98 0.002 90)" }
+              : { border: "1px solid oklch(0.63 0.14 52)", color: "oklch(0.63 0.14 52)", background: "transparent" }
+          }
         >
           {confirmDelete ? "确认删除？" : "删除"}
         </button>

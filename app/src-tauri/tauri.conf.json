@@ -25,20 +25,7 @@
   },
   "plugins": {
     "shell": {
-      "scope": [
-        {
-          "name": "python-sidecar",
-          "cmd": "python3",
-          "args": [
-            { "validator": "^.*sidecar_main\\.py$" }
-          ]
-        },
-        {
-          "name": "python-sidecar",
-          "sidecar": true,
-          "args": true
-        }
-      ]
+      "open": true
     }
   },
   "bundle": {

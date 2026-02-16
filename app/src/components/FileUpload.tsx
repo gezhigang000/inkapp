@@ -50,7 +50,6 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
     const updated = [...files, ...newFiles];
     onFilesChange(updated);
 
-    // 提取文件内容
     setExtracting(true);
     try {
       const result = await invoke<string>("run_sidecar", {
@@ -100,13 +99,22 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
   const totalChars = files.reduce((sum, f) => sum + (f.chars || 0), 0);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+    <div
+      className="rounded-[14px] p-5 transition-shadow duration-200"
+      style={{
+        background: "oklch(1 0 0)",
+        boxShadow: "0 1px 2px oklch(0 0 0 / 4%)",
+      }}
+    >
       <div className="flex items-center justify-between mb-3">
-        <label className="block text-sm font-medium text-gray-700">
+        <label
+          className="block text-sm font-medium"
+          style={{ color: "oklch(0.30 0.005 265)" }}
+        >
           参考资料（可选）
         </label>
         {totalChars > 0 && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs" style={{ color: "oklch(0.50 0 0)" }}>
             已提取 {(totalChars / 1000).toFixed(1)}k 字符
           </span>
         )}
@@ -116,9 +124,12 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
         type="button"
         onClick={handlePickFiles}
         disabled={extracting}
-        className="w-full py-3 border-2 border-dashed border-gray-300
-          rounded-lg text-sm text-gray-500 hover:border-blue-400
-          hover:text-blue-500 transition-colors disabled:opacity-50"
+        className="w-full py-3 rounded-[10px] text-sm transition-[background-color,opacity] duration-150 disabled:opacity-40"
+        style={{
+          border: "2px dashed oklch(0.85 0 0)",
+          color: "oklch(0.50 0 0)",
+          background: "transparent",
+        }}
       >
         {extracting ? "正在解析文件..." : "点击选择文件（Excel / PDF / Word / TXT）"}
       </button>
@@ -128,8 +139,8 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
           {files.map((f) => (
             <div
               key={f.path}
-              className="flex items-center justify-between px-3 py-2
-                bg-gray-50 rounded-lg text-sm"
+              className="flex items-center justify-between px-3 py-2 rounded-[10px] text-sm"
+              style={{ background: "oklch(0.965 0 0)" }}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span className="text-base">
@@ -141,24 +152,29 @@ export default function FileUpload({ files, onFilesChange }: FileUploadProps) {
                         ? "📝"
                         : "📄"}
                 </span>
-                <span className="truncate text-gray-700">{f.name}</span>
+                <span className="truncate" style={{ color: "oklch(0.30 0.005 265)" }}>
+                  {f.name}
+                </span>
                 {f.extracting && (
-                  <span className="text-xs text-blue-500">解析中...</span>
+                  <span className="text-xs" style={{ color: "oklch(0.50 0 0)" }}>
+                    解析中...
+                  </span>
                 )}
                 {f.chars && (
-                  <span className="text-xs text-gray-400 shrink-0">
+                  <span className="text-xs shrink-0" style={{ color: "oklch(0.50 0 0)" }}>
                     {(f.chars / 1000).toFixed(1)}k 字
                   </span>
                 )}
                 {f.error && (
-                  <span className="text-xs text-red-500 shrink-0">
+                  <span className="text-xs shrink-0" style={{ color: "oklch(0.63 0.14 52)" }}>
                     {f.error}
                   </span>
                 )}
               </div>
               <button
                 onClick={() => handleRemove(f.path)}
-                className="text-gray-400 hover:text-red-500 ml-2 shrink-0"
+                className="ml-2 shrink-0 transition-opacity duration-150 hover:opacity-60"
+                style={{ color: "oklch(0.50 0 0)" }}
               >
                 ✕
               </button>

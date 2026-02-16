@@ -77,16 +77,25 @@ export default function Articles() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 mx-auto" style={{ maxWidth: 1080 }}>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">文章管理</h1>
+        <h1
+          className="text-2xl font-semibold"
+          style={{ color: "oklch(0.15 0.005 265)" }}
+        >
+          文章管理
+        </h1>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">
+          <span className="text-sm" style={{ color: "oklch(0.50 0 0)" }}>
             共 {articles.length} 篇
           </span>
           <button
             onClick={loadArticles}
-            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="px-3 h-8 text-xs font-medium rounded-[10px] transition-[background-color] duration-150"
+            style={{
+              background: "oklch(0.965 0 0)",
+              color: "oklch(0.30 0.005 265)",
+            }}
           >
             刷新
           </button>
@@ -99,15 +108,22 @@ export default function Articles() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="搜索文章标题..."
-          className="w-full max-w-md px-4 py-2 text-sm border
-            border-gray-200 rounded-lg focus:outline-none
-            focus:ring-2 focus:ring-blue-500
-            focus:border-transparent"
+          className="w-full max-w-md px-4 h-9 text-sm rounded-[10px] placeholder:text-[oklch(0.50_0_0)] focus:outline-none"
+          style={{
+            border: "1px solid oklch(0.91 0 0)",
+            background: "oklch(1 0 0)",
+            color: "oklch(0.15 0.005 265)",
+          }}
         />
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400">加载中...</div>
+        <div
+          className="text-center py-16"
+          style={{ color: "oklch(0.50 0 0)" }}
+        >
+          加载中...
+        </div>
       ) : (
         <div className="flex gap-6">
           <div className="flex-1 min-w-0">

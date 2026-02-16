@@ -46,14 +46,13 @@ pub async fn run_sidecar(
 ) -> Result<String, String> {
     let shell = app.shell();
 
-    // 优先使用 PyInstaller 打包的 sidecar 二进制；
-    // 如果 sidecar 不可用（开发模式），回退到 python3 直接执行。
+    // 优先使用 PyInstaller 打包的 sidecar 二进制（不依赖本地 Python）；
+    // 如果 sidecar 不可用，回退到 python3 直接执行。
     let (mut rx, mut child) = match shell.sidecar("python-sidecar") {
         Ok(cmd) => cmd.spawn().map_err(|e| {
             format!("Failed to spawn sidecar binary: {}", e)
         })?,
         Err(_) => {
-            // 开发模式回退：通过 python3 执行脚本
             let script_path = resolve_script_path(&app)
                 .unwrap_or_else(|| "scripts/sidecar_main.py".to_string());
             shell
@@ -83,12 +82,38 @@ pub async fn run_sidecar(
                 let line_str = String::from_utf8_lossy(&line).to_string();
                 if let Ok(sidecar_event) = serde_json::from_str::<SidecarEvent>(&line_str) {
                     let _ = app.emit("sidecar-event", &sidecar_event);
+                } else if !line_str.trim().is_empty() {
+                    // Forward non-JSON stdout as log events
+                    let log_event = SidecarEvent {
+                        r#type: "progress".to_string(),
+                        stage: Some("log".to_string()),
+                        message: Some(line_str.clone()),
+                        percent: None,
+                        status: None,
+                        article_path: None,
+                        title: None,
+                        code: None,
+                    };
+                    let _ = app.emit("sidecar-event", &log_event);
                 }
                 output_lines.push(line_str);
             }
             CommandEvent::Stderr(line) => {
                 let line_str = String::from_utf8_lossy(&line).to_string();
                 eprintln!("Sidecar stderr: {}", line_str);
+                if !line_str.trim().is_empty() {
+                    let log_event = SidecarEvent {
+                        r#type: "progress".to_string(),
+                        stage: Some("log".to_string()),
+                        message: Some(format!("[stderr] {}", line_str)),
+                        percent: None,
+                        status: None,
+                        article_path: None,
+                        title: None,
+                        code: None,
+                    };
+                    let _ = app.emit("sidecar-event", &log_event);
+                }
             }
             CommandEvent::Terminated(status) => {
                 if status.code.unwrap_or(-1) != 0 {
@@ -104,4 +129,13 @@ pub async fn run_sidecar(
     }
 
     Ok(output_lines.join("\n"))
+}
+
+#[tauri::command]
+pub async fn write_temp_html(content: String) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir();
+    let file_path = temp_dir.join("zhiqu-preview.html");
+    std::fs::write(&file_path, &content)
+        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+    Ok(file_path.to_string_lossy().to_string())
 }

@@ -23,18 +23,38 @@ from datetime import datetime
 from pathlib import Path
 
 # Pillow 可能装在项目本地目录
-SCRIPT_DIR = Path(__file__).parent           # scripts/
-PROJECT_ROOT = SCRIPT_DIR.parent             # 项目根目录
+# PyInstaller 打包后，数据文件在 sys._MEIPASS 目录下
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # PyInstaller 打包环境
+    BUNDLE_DIR = Path(sys._MEIPASS)
+    SCRIPT_DIR = BUNDLE_DIR
+    PROJECT_ROOT = BUNDLE_DIR
+else:
+    # 开发环境
+    SCRIPT_DIR = Path(__file__).parent           # scripts/
+    PROJECT_ROOT = SCRIPT_DIR.parent             # 项目根目录
 
 PYLIB_DIR = PROJECT_ROOT / "pylib"
 if PYLIB_DIR.exists():
     sys.path.insert(0, str(PYLIB_DIR))
 
 CONFIG_FILE = PROJECT_ROOT / "config.env"
-PROMPT_FILE = PROJECT_ROOT / "prompts" / "prompt_template.txt"
-TOPIC_PROMPT_FILE = PROJECT_ROOT / "prompts" / "topic_prompt_template.txt"
+
+# 提示词：优先使用用户自定义目录，回退到内置默认
+_USER_PROMPTS_DIR = Path.home() / "质取AI" / "prompts"
+_BUNDLED_PROMPTS_DIR = PROJECT_ROOT / "prompts"
+
+def _resolve_prompt(filename):
+    """优先用户目录，回退内置"""
+    user_path = _USER_PROMPTS_DIR / filename
+    if user_path.exists():
+        return user_path
+    return _BUNDLED_PROMPTS_DIR / filename
+
+PROMPT_FILE = _resolve_prompt("prompt_template.txt")
+TOPIC_PROMPT_FILE = _resolve_prompt("topic_prompt_template.txt")
 QRCODE_IMAGE = PROJECT_ROOT / "assets" / "扫码_搜索联合传播样式-白色版-compressed.jpg"
-QRCODE_URL_CACHE = PROJECT_ROOT / ".qrcode_url.cache"
+QRCODE_URL_CACHE = Path.home() / "质取AI" / ".qrcode_url.cache"
 
 
 # ============================================================
@@ -1006,11 +1026,6 @@ def append_footer(html_content, qrcode_url=None):
     footer_parts = []
     footer_parts.append(
         '<section style="margin-top:40px;padding-top:24px;border-top:1px solid #e5e7eb;text-align:center;">'
-    )
-    footer_parts.append(
-        '<p style="font-size:15px;color:#333;font-weight:bold;margin-bottom:12px;">'
-        '关注公众号「嗨清单」，回复「报告」，免费获取 Anthropic 2026 三份趋势报告原文 PDF'
-        '</p>'
     )
     if qrcode_url:
         footer_parts.append(

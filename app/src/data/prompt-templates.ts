@@ -326,3 +326,4 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     agentMode: true,
     maxTurns: 5,
   },
+];

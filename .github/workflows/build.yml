@@ -40,7 +40,7 @@ jobs:
           cd scripts
           SEP="${{ matrix.separator }}"
           pyinstaller --onefile --name python-sidecar \
-            --add-data "prompts${SEP}prompts" \
+            --add-data "../prompts${SEP}prompts" \
             --hidden-import requests \
             --hidden-import openpyxl \
             --hidden-import pdfplumber \

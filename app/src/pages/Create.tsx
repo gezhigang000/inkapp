@@ -8,6 +8,8 @@ import type { ModeParams } from "../components/ModeSelector";
 import GenerateProgress from "../components/GenerateProgress";
 import type { SidecarEvent } from "../components/GenerateProgress";
 import ArticlePreview from "../components/ArticlePreview";
+import FileUpload from "../components/FileUpload";
+import type { UploadedFile } from "../components/FileUpload";
 
 type Mode = "daily" | "topic" | "video";
 
@@ -18,6 +20,7 @@ export default function Create() {
   );
   const [mode, setMode] = useState<Mode>("daily");
   const [params, setParams] = useState<ModeParams>({});
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [events, setEvents] = useState<SidecarEvent[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<{
@@ -100,6 +103,14 @@ export default function Create() {
       if (keyName) {
         payload[keyName] = getConfig(keyName);
       }
+      // 附加上传文件的提取内容
+      const fileTexts = uploadedFiles
+        .filter((f) => f.extractedText)
+        .map((f) => `=== ${f.name} ===\n${f.extractedText}`)
+        .join("\n\n");
+      if (fileTexts) {
+        payload.file_contents = fileTexts;
+      }
 
       await invoke("run_sidecar", {
         commandJson: JSON.stringify(payload),
@@ -150,6 +161,8 @@ export default function Create() {
         params={params}
         onParamsChange={setParams}
       />
+
+      <FileUpload files={uploadedFiles} onFilesChange={setUploadedFiles} />
 
       <button
         onClick={handleGenerate}

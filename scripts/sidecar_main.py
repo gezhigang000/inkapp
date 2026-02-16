@@ -50,6 +50,7 @@ def handle_generate(params):
     mode = params.get("mode", "daily")
     topic = params.get("topic", "")
     video_url = params.get("video_url", "")
+    file_contents = params.get("file_contents", "")  # 上传文件提取的文本
     output_dir = config.get("OUTPUT_DIR", os.path.join(PROJECT_ROOT, "output", "articles"))
     timestamp = make_timestamp()
 
@@ -67,6 +68,11 @@ def handle_generate(params):
         today = datetime.now().strftime("%Y-%m-%d")
         variation = pick_daily_variation(today)
         effective_topic = topic if topic else variation.get("topic")
+
+        # 如果有上传文件内容，附加到 topic 中供 LLM 分析
+        if file_contents:
+            file_context = f"\n\n以下是用户上传的参考资料，请基于这些数据进行分析和创作：\n\n{file_contents}"
+            effective_topic = (effective_topic or "数据分析") + file_context
 
         emit("progress", stage="generating", message="正在生成文章...", percent=20)
         html_content = generate_article(topic=effective_topic, config=config)
@@ -283,6 +289,105 @@ def handle_delete_article(params):
              message=f"未找到文章: {article_id}")
 
 
+def handle_extract_files(params):
+    """提取上传文件的文本内容，支持 Excel/PDF/Word"""
+    file_paths = params.get("file_paths", [])
+    if not file_paths:
+        emit("error", code="MISSING_PARAMS", message="缺少 file_paths")
+        return
+
+    results = []
+    for fpath in file_paths:
+        if not os.path.exists(fpath):
+            results.append({"path": fpath, "error": "文件不存在"})
+            continue
+
+        ext = os.path.splitext(fpath)[1].lower()
+        name = os.path.basename(fpath)
+        try:
+            if ext in (".xlsx", ".xls"):
+                text = _extract_excel(fpath)
+            elif ext == ".pdf":
+                text = _extract_pdf(fpath)
+            elif ext in (".docx", ".doc"):
+                text = _extract_docx(fpath)
+            elif ext in (".txt", ".md", ".csv"):
+                with open(fpath, "r", encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+            else:
+                results.append({"path": fpath, "name": name,
+                                "error": f"不支持的文件类型: {ext}"})
+                continue
+
+            # 截断过长内容（避免超出 LLM 上下文）
+            max_chars = 50000
+            if len(text) > max_chars:
+                text = text[:max_chars] + f"\n\n... (内容已截断，原文共 {len(text)} 字符)"
+
+            results.append({"path": fpath, "name": name, "text": text,
+                            "chars": len(text)})
+        except Exception as e:
+            results.append({"path": fpath, "name": name, "error": str(e)})
+
+    emit("result", status="success", files=results)
+
+
+def _extract_excel(fpath):
+    """提取 Excel 文件内容为文本表格"""
+    import openpyxl
+    wb = openpyxl.load_workbook(fpath, read_only=True, data_only=True)
+    parts = []
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        rows = []
+        for row in ws.iter_rows(values_only=True):
+            cells = [str(c) if c is not None else "" for c in row]
+            rows.append(" | ".join(cells))
+        if rows:
+            parts.append(f"## Sheet: {sheet_name}\n" + "\n".join(rows))
+    wb.close()
+    return "\n\n".join(parts) if parts else "(空表格)"
+
+
+def _extract_pdf(fpath):
+    """提取 PDF 文件文本"""
+    import pdfplumber
+    parts = []
+    with pdfplumber.open(fpath) as pdf:
+        for i, page in enumerate(pdf.pages):
+            text = page.extract_text()
+            if text:
+                parts.append(f"--- 第 {i+1} 页 ---\n{text}")
+            # 提取表格
+            tables = page.extract_tables()
+            for t_idx, table in enumerate(tables):
+                table_text = "\n".join(
+                    " | ".join(str(c) if c else "" for c in row)
+                    for row in table
+                )
+                parts.append(f"[表格 {t_idx+1}]\n{table_text}")
+    return "\n\n".join(parts) if parts else "(空 PDF)"
+
+
+def _extract_docx(fpath):
+    """提取 Word 文档文本"""
+    from docx import Document
+    doc = Document(fpath)
+    parts = []
+    for para in doc.paragraphs:
+        if para.text.strip():
+            parts.append(para.text)
+    # 提取表格
+    for t_idx, table in enumerate(doc.tables):
+        rows = []
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells]
+            rows.append(" | ".join(cells))
+        if rows:
+            parts.append(f"[表格 {t_idx+1}]\n" + "\n".join(rows))
+    return "\n".join(parts) if parts else "(空文档)"
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -300,6 +405,7 @@ def main():
         "save_config": handle_save_config,
         "read_file": handle_read_file,
         "delete_article": handle_delete_article,
+        "extract_files": handle_extract_files,
     }
 
     handler = handlers.get(action)

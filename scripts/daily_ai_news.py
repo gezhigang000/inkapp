@@ -958,7 +958,7 @@ def _pick_cover_theme(color_style="random", rng=None):
 
 def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
                          color_style="random", pattern_style="random",
-                         show_title=True, subtitle="Ink"):
+                         show_title=True, subtitle="Ink", cover_title=None):
     """使用 Pillow 生成公众号封面图 (900x383, 2.35:1)，支持自定义配色/图案/标题/作者"""
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -1023,11 +1023,12 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
     if not title:
         title = "AI 前沿动态速递"
 
+    display_title = cover_title if cover_title else title
     if show_title:
         max_width = W - 120
         lines = []
         current_line = ""
-        for char in title:
+        for char in display_title:
             test_line = current_line + char
             bbox = draw.textbbox((0, 0), test_line, font=font_title)
             if bbox[2] - bbox[0] > max_width:

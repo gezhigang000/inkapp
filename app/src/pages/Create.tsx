@@ -28,6 +28,7 @@ export default function Create() {
   const [coverPattern, setCoverPattern] = useState(() => getConfig("cover_pattern_style") || "random");
   const [coverShowTitle, setCoverShowTitle] = useState(() => getConfig("cover_show_title") !== "false");
   const [coverSubtitle, setCoverSubtitle] = useState(() => getConfig("cover_subtitle") || "Ink");
+  const [coverTitle, setCoverTitle] = useState(() => getConfig("cover_title") || "");
 
   // Redirect to home if no template selected (and not mid-generation)
   useEffect(() => {
@@ -137,6 +138,7 @@ export default function Create() {
     payload.cover_pattern_style = coverPattern;
     payload.cover_show_title = coverShowTitle;
     payload.cover_subtitle = coverSubtitle;
+    if (coverTitle.trim()) payload.cover_title = coverTitle.trim();
 
     startGenerate(payload);
   };
@@ -252,6 +254,18 @@ export default function Create() {
                   <ChipBtn active={coverShowTitle} onClick={() => { setCoverShowTitle(true); updateConfig("cover_show_title", "true"); }}>显示</ChipBtn>
                   <ChipBtn active={!coverShowTitle} onClick={() => { setCoverShowTitle(false); updateConfig("cover_show_title", "false"); }}>隐藏</ChipBtn>
                 </CoverSettingRow>
+                {coverShowTitle && (
+                  <CoverSettingRow label="自定义标题">
+                    <input
+                      type="text"
+                      value={coverTitle}
+                      onChange={(e) => { setCoverTitle(e.target.value); updateConfig("cover_title", e.target.value); }}
+                      placeholder="留空则使用文章标题"
+                      className="px-2.5 h-7 text-xs rounded-[8px] flex-1"
+                      style={inputStyle}
+                    />
+                  </CoverSettingRow>
+                )}
                 <CoverSettingRow label="封面署名">
                   <input
                     type="text"

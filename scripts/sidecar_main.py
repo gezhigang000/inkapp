@@ -77,12 +77,15 @@ def emit(event_type, **kwargs):
 
 def _get_cover_kwargs(params):
     """从 payload 提取封面设置参数"""
-    return {
+    kwargs = {
         "color_style": params.get("cover_color_style", "random"),
         "pattern_style": params.get("cover_pattern_style", "random"),
         "show_title": params.get("cover_show_title", True),
         "subtitle": params.get("cover_subtitle", "Ink"),
     }
+    if params.get("cover_title"):
+        kwargs["cover_title"] = params["cover_title"]
+    return kwargs
 
 
 def _handle_translate_inplace(params, config, file_formats, topic, timestamp,

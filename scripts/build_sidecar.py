@@ -59,6 +59,8 @@ def build():
     third_party = [
         "requests", "PIL", "PIL.Image", "PIL.ImageDraw", "PIL.ImageFont",
         "youtube_transcript_api", "json", "re", "hashlib",
+        # 文件提取依赖
+        "pdfplumber", "fitz", "pymupdf",
         # Agent 模式依赖
         "docx", "openpyxl", "reportlab", "reportlab.lib.pagesizes",
         "reportlab.pdfgen", "pandas", "numpy", "matplotlib",

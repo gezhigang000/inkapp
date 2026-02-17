@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 interface ArticleMeta {
@@ -8,6 +9,8 @@ interface ArticleMeta {
   status: "generated" | "published";
   coverPath?: string;
   articlePath: string;
+  convertedPath?: string;
+  fileType?: string;
 }
 
 interface ArticleListProps {
@@ -24,6 +27,28 @@ const MODE_LABELS: Record<string, string> = {
 };
 
 export type { ArticleMeta };
+
+function CoverImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        className="w-full h-36 rounded-[10px] mb-3 flex items-center justify-center text-3xl"
+        style={{ background: "oklch(0.965 0 0)", color: "oklch(0.75 0 0)" }}
+      >
+        📄
+      </div>
+    );
+  }
+  return (
+    <img
+      src={convertFileSrc(src)}
+      alt={alt}
+      className="w-full h-36 object-cover rounded-[10px] mb-3"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export default function ArticleList({
   articles,
@@ -80,11 +105,7 @@ export default function ArticleList({
           }}
         >
           {article.coverPath ? (
-            <img
-              src={convertFileSrc(article.coverPath)}
-              alt={article.title}
-              className="w-full h-36 object-cover rounded-[10px] mb-3"
-            />
+            <CoverImage src={article.coverPath} alt={article.title} />
           ) : (
             <div
               className="w-full h-36 rounded-[10px] mb-3 flex items-center justify-center text-3xl"

@@ -263,10 +263,17 @@ def _generate_topic_research(topic, today, config, custom_prompt=None, file_cont
     # 有上传文件时：跳过联网搜索，将数据附加到 prompt 末尾
     has_file_data = bool(file_contents and file_contents.strip())
     if has_file_data:
+        # 翻译场景使用中性前缀，避免与翻译指令冲突
+        if custom_prompt and "翻译专家" in custom_prompt:
+            prefix = "以下是需要翻译的原始文档内容，请严格按照上述翻译要求进行翻译："
+        else:
+            prefix = (
+                "以下是用户上传的原始数据，请务必基于这些数据进行深入分析，"
+                "引用具体数字和内容，不要泛泛描述分析方法。"
+            )
         prompt += (
             f"\n\n{'='*60}\n"
-            f"以下是用户上传的原始数据，请务必基于这些数据进行深入分析，"
-            f"引用具体数字和内容，不要泛泛描述分析方法。\n"
+            f"{prefix}\n"
             f"{'='*60}\n\n"
             f"{file_contents}"
         )
@@ -1032,6 +1039,8 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
 def get_access_token(app_id, app_secret):
     """获取微信 access_token"""
     import requests
+    import logging
+    _logger = logging.getLogger("ink")
 
     url = "https://api.weixin.qq.com/cgi-bin/token"
     params = {
@@ -1043,7 +1052,7 @@ def get_access_token(app_id, app_secret):
     data = resp.json()
 
     if "access_token" not in data:
-        print(f"[错误] 获取 access_token 失败: {data}")
+        _logger.error("获取 access_token 失败: %s", data)
         sys.exit(1)
 
     return data["access_token"]
@@ -1052,6 +1061,8 @@ def get_access_token(app_id, app_secret):
 def upload_cover_image(access_token, image_path):
     """上传封面图到微信素材库，返回 media_id"""
     import requests
+    import logging
+    _logger = logging.getLogger("ink")
 
     if not image_path or not Path(image_path).exists():
         return None
@@ -1063,16 +1074,18 @@ def upload_cover_image(access_token, image_path):
     data = resp.json()
 
     if "media_id" not in data:
-        print(f"[警告] 上传封面图失败: {data}")
+        _logger.warning("上传封面图失败: %s", data)
         return None
 
-    print(f"      封面图已上传: {data['media_id']}")
+    _logger.info("封面图已上传: %s", data['media_id'])
     return data["media_id"]
 
 
 def upload_article_image(access_token, image_path):
     """上传文章内图片到微信，返回可在文章中使用的 URL"""
     import requests
+    import logging
+    _logger = logging.getLogger("ink")
 
     url = f"https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token={access_token}"
     with open(image_path, "rb") as f:
@@ -1081,7 +1094,7 @@ def upload_article_image(access_token, image_path):
     data = resp.json()
 
     if "url" not in data:
-        print(f"[警告] 上传文章图片失败: {data}")
+        _logger.warning("上传文章图片失败: %s", data)
         return None
 
     return data["url"]
@@ -1133,6 +1146,8 @@ def create_draft(access_token, title, html_content, author, thumb_media_id=None)
     """创建微信公众号草稿"""
     import requests
     import json as json_mod
+    import logging
+    _logger = logging.getLogger("ink")
 
     url = f"https://api.weixin.qq.com/cgi-bin/draft/add?access_token={access_token}"
 
@@ -1143,7 +1158,7 @@ def create_draft(access_token, title, html_content, author, thumb_media_id=None)
         while len(title.encode("utf-8")) > 61:
             title = title[:-1]
         title = title + "…"
-        print(f"      标题超长，已截断为: {title}")
+        _logger.info("标题超长，已截断为: %s", title)
 
     # 压缩 HTML：去掉标签间多余空白和换行，避免微信渲染出多余空格
     html_content = re.sub(r'>\s+<', '><', html_content)       # 标签之间的空白
@@ -1171,8 +1186,16 @@ def create_draft(access_token, title, html_content, author, thumb_media_id=None)
     resp = requests.post(url, data=body, headers={"Content-Type": "application/json"}, timeout=30)
     data = resp.json()
 
+    _logger.info("create_draft response: %s", json_mod.dumps(data, ensure_ascii=False)[:500])
+
+    # 微信 API 错误检查：errcode 非 0 表示失败
+    if data.get("errcode", 0) != 0:
+        _logger.error("创建草稿失败: errcode=%s errmsg=%s",
+                       data.get("errcode"), data.get("errmsg"))
+        return None
+
     if "media_id" not in data:
-        print(f"[错误] 创建草稿失败: {data}")
+        _logger.error("创建草稿失败（无 media_id）: %s", data)
         return None
 
     return data["media_id"]

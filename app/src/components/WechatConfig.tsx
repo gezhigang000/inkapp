@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useConfig } from "../hooks/useConfig";
 
 export default function WechatConfig() {
@@ -17,21 +18,29 @@ export default function WechatConfig() {
     setTesting(true);
     setTestMsg(null);
     try {
-      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (data.access_token) {
-        setTestMsg({ type: "success", text: "连接成功，access_token 获取正常 ✓" });
-      } else if (data.errcode === 40164) {
-        // IP 不在白名单，从错误信息中提取真实 IP
-        const ipMatch = data.errmsg?.match(/invalid ip (\d+\.\d+\.\d+\.\d+)/);
-        const realIp = ipMatch?.[1] || "未知";
-        setTestMsg({
-          type: "ip",
-          text: `当前出口 IP: ${realIp}（未在白名单中，请添加到微信公众平台 → 基本配置 → IP 白名单）`,
-        });
-      } else {
-        setTestMsg({ type: "error", text: `错误 ${data.errcode}: ${data.errmsg}` });
+      const result = await invoke<string>("run_sidecar", {
+        commandJson: JSON.stringify({
+          action: "test_wechat",
+          app_id: appId,
+          app_secret: appSecret,
+        }),
+      });
+      // 解析 sidecar 返回的 JSON lines
+      for (const line of result.split("\n")) {
+        try {
+          const data = JSON.parse(line);
+          if (data.type === "result" && data.status === "success") {
+            const ipInfo = data.ip ? `（当前 IP: ${data.ip}）` : "";
+            setTestMsg({ type: "success", text: `${data.message} ✓ ${ipInfo}` });
+          } else if (data.type === "result" && data.status === "ip_error") {
+            setTestMsg({
+              type: "ip",
+              text: `当前出口 IP: ${data.ip}（未在白名单中，请添加到微信公众平台 → 基本配置 → IP 白名单）`,
+            });
+          } else if (data.type === "error") {
+            setTestMsg({ type: "error", text: data.message || "连接失败" });
+          }
+        } catch { /* skip non-JSON lines */ }
       }
     } catch (e) {
       setTestMsg({ type: "error", text: `请求失败: ${e instanceof Error ? e.message : e}` });

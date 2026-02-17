@@ -63,6 +63,7 @@ export default function Create() {
       topic: params.topic || undefined,
       video_url: params.videoUrl || undefined,
       provider: selectedProvider,
+      template_id: selectedTemplate?.id || "",
     };
 
     // Pass template prompt for sidecar to use

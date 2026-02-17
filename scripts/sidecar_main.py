@@ -75,6 +75,179 @@ def emit(event_type, **kwargs):
         logger.info("emit %s: %s", event_type, msg)
 
 
+def _handle_translate_inplace(params, config, file_formats, topic, timestamp,
+                              output_dir, header_html, footer_html):
+    """原格式翻译：保持文档格式和样式，只替换文字内容。"""
+    import re as re_mod
+    from translate_inplace import translate_file_inplace
+    from daily_ai_news import (
+        generate_cover_image, save_article, make_timestamp,
+        pick_daily_variation, append_footer,
+    )
+
+    # 从 topic 提取目标语言（如 "翻译为英文" → "英文"）
+    lang_match = re_mod.search(
+        r'(?:翻译[为成]?|译[为成]?|translate\s*(?:to|into)?)\s*(.+)',
+        topic, re_mod.IGNORECASE)
+    target_lang = lang_match.group(1) if lang_match else "英文"
+    logger.info("Inplace translation: target_lang=%s, files=%d",
+                target_lang, len(file_formats))
+
+    article_dir = os.path.join(output_dir, timestamp)
+    os.makedirs(article_dir, exist_ok=True)
+
+    translated_files = []
+    all_preview_texts = []
+
+    for finfo in file_formats:
+        src_path = finfo.get("path", "")
+        fname = finfo.get("name", "")
+        ext = finfo.get("ext", "").lower()
+
+        if not src_path or not os.path.exists(src_path):
+            logger.warning("File not found: %s", src_path)
+            continue
+        if ext not in ("docx", "doc", "pptx", "ppt", "pdf"):
+            continue
+
+        # 输出文件名：原文件名加 _translated 后缀
+        base, dot_ext = os.path.splitext(fname)
+        out_name = f"{base}_translated{dot_ext}"
+        out_path = os.path.join(article_dir, out_name)
+
+        emit("progress", stage="translating",
+             message=f"正在翻译 {fname}...", percent=20)
+
+        result_path = translate_file_inplace(
+            src_path, out_path, target_lang, config, emit_fn=emit)
+
+        if result_path:
+            translated_files.append(out_name)
+            logger.info("Translated: %s → %s", fname, out_name)
+            # 收集预览文本
+            try:
+                preview = _extract_preview_text(result_path, ext)
+                if preview:
+                    all_preview_texts.append(
+                        f"<h3>{fname} → {target_lang}</h3>\n{preview}")
+            except Exception:
+                pass
+        else:
+            emit("progress", stage="translating",
+                 message=f"翻译 {fname} 失败，回退到文本翻译模式")
+            logger.warning("Inplace translation failed for %s", fname)
+
+    if not translated_files:
+        emit("error", code="TRANSLATE_FAILED",
+             message="翻译失败，无法处理上传的文件")
+        return
+
+    # 生成 HTML 预览页面
+    emit("progress", stage="saving", message="正在保存...", percent=80)
+    preview_html = _build_preview_html(all_preview_texts, target_lang)
+    if header_html:
+        preview_html = header_html + preview_html
+    if footer_html:
+        preview_html = preview_html + footer_html
+
+    html_path = os.path.join(article_dir, f"{timestamp}-report.html")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(preview_html)
+
+    # 生成封面图
+    emit("progress", stage="cover", message="正在生成封面图...", percent=90)
+    today = datetime.now().strftime("%Y-%m-%d")
+    variation = pick_daily_variation(today)
+    title = f"文档翻译 - {target_lang}"
+    cover_path = generate_cover_image(
+        timestamp, title, topic, article_dir,
+        cover_theme=variation.get("cover_theme"),
+    )
+
+    # 保存元数据
+    converted_path = os.path.join(article_dir, translated_files[0]) \
+        if translated_files else ""
+    file_type = os.path.splitext(translated_files[0])[1].lstrip(".") \
+        if translated_files else "html"
+    metadata = {
+        "title": title,
+        "date": timestamp[:8],
+        "mode": "topic",
+        "topic": topic,
+        "status": "generated",
+        "provider": config.get("LLM_PROVIDER", "deepseek"),
+        "file_type": file_type,
+        "converted_path": converted_path,
+        "output_files": translated_files,
+        "articles": [
+            {"title": title, "path": html_path,
+             "cover": str(cover_path) if cover_path else ""}
+        ],
+    }
+    meta_path = os.path.join(article_dir, f"{timestamp}-metadata.json")
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+    emit("progress", stage="done", message="翻译完成！", percent=100)
+    emit("result", status="success", title=title,
+         article_path=html_path, metadata_path=meta_path,
+         file_type=file_type, article_count=1)
+
+
+def _extract_preview_text(file_path, ext):
+    """从翻译后的文件中提取预览文本（前几段）"""
+    if ext in ("docx", "doc"):
+        from docx import Document
+        doc = Document(file_path)
+        lines = [p.text for p in doc.paragraphs[:20] if p.text.strip()]
+        return "<br>".join(lines[:10])
+    elif ext in ("pptx", "ppt"):
+        from pptx import Presentation
+        prs = Presentation(file_path)
+        lines = []
+        for slide in prs.slides[:5]:
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for para in shape.text_frame.paragraphs:
+                        if para.text.strip():
+                            lines.append(para.text)
+        return "<br>".join(lines[:10])
+    elif ext == "pdf":
+        try:
+            import fitz
+            doc = fitz.open(file_path)
+            lines = []
+            for page in doc[:3]:
+                text = page.get_text()
+                if text:
+                    lines.extend(text.strip().split("\n")[:5])
+            doc.close()
+            return "<br>".join(lines[:10])
+        except Exception:
+            return ""
+    return ""
+
+
+def _build_preview_html(preview_texts, target_lang):
+    """构建翻译预览 HTML"""
+    font = "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif"
+    parts = [
+        f'<section style="padding:20px 0;font-family:{font};">',
+        f'<h2 style="font-size:18px;color:#333;margin-bottom:16px;">'
+        f'翻译预览（{target_lang}）</h2>',
+        '<p style="font-size:13px;color:#999;margin-bottom:20px;">'
+        '以下为翻译后文档的部分内容预览，完整文件请点击「打开文件夹」查看。</p>',
+    ]
+    for text in preview_texts:
+        parts.append(
+            f'<div style="padding:16px;background:#f8f9fa;border-radius:8px;'
+            f'margin-bottom:12px;font-size:14px;line-height:1.8;color:#333;">'
+            f'{text}</div>'
+        )
+    parts.append('</section>')
+    return "\n".join(parts)
+
+
 def handle_generate(params):
     """处理文章生成请求，集成 daily_ai_news.py 核心逻辑"""
     from datetime import datetime
@@ -128,6 +301,21 @@ def handle_generate(params):
             run_video_analysis(video_url, config, args)
             emit("progress", stage="done", message="视频分析完成！", percent=100)
             emit("result", status="success", title="视频分析完成", article_path=output_dir)
+            return
+
+        # ---------- 原格式翻译模式 ----------
+        # 检测：翻译模板 + 有上传文件（docx/pptx/pdf）
+        template_id = params.get("template_id", "")
+        is_translate = template_id == "translate"
+        has_translatable_file = (
+            is_translate and file_formats and
+            any(f.get("ext", "").lower() in ("docx", "doc", "pptx", "ppt", "pdf")
+                for f in file_formats)
+        )
+        if has_translatable_file:
+            _handle_translate_inplace(
+                params, config, file_formats, topic, timestamp,
+                output_dir, header_html, footer_html)
             return
 
         # ---------- 文章生成模式（daily / topic） ----------
@@ -213,6 +401,7 @@ def handle_generate(params):
         # 格式转换：如果有上传文件，生成与上传文件相同格式的输出
         file_type = "html"
         converted_files = []
+        converted_path = ""
         if file_formats:
             target_ext = file_formats[0].get("ext", "").lower()
             if target_ext and target_ext not in ("txt", "md", "csv"):
@@ -220,9 +409,10 @@ def handle_generate(params):
                 emit("progress", stage="converting",
                      message=f"正在转换为 .{target_ext} 格式...", percent=85)
                 converted = _convert_html_to_format(
-                    html_content, target_ext, article_dir)
+                    html_content, target_ext, article_dir, timestamp)
                 if converted:
                     file_type = target_ext
+                    converted_path = converted
                     converted_files.append(os.path.basename(converted))
                     logger.info("Converted to %s: %s", target_ext, converted)
 
@@ -236,6 +426,7 @@ def handle_generate(params):
             "status": "generated",
             "provider": config.get("LLM_PROVIDER", "claude"),
             "file_type": file_type,
+            "converted_path": converted_path,
             "output_files": converted_files,
             "articles": [
                 {"title": articles[i][0], "path": filepaths[i], "cover": img_paths[i]}
@@ -362,7 +553,7 @@ def handle_agent_generate(params):
                 emit("progress", stage="converting",
                      message=f"正在转换为 .{target_ext} 格式...")
                 converted = _convert_html_to_format(
-                    html_content, target_ext, ws_output)
+                    html_content, target_ext, ws_output, timestamp)
                 if converted:
                     output_files.append(os.path.basename(converted))
                     logger.info("Auto-converted HTML to %s: %s",
@@ -483,6 +674,54 @@ def handle_validate_key(params):
         else:
             emit("error", code="INVALID_KEY",
                  message=f"API Key 无效: HTTP {resp.status_code}")
+    except Exception as e:
+        emit("error", code="CONNECTION_ERROR", message=f"连接失败: {str(e)}")
+
+
+def handle_test_wechat(params):
+    """测试微信公众号连接：获取 access_token 并返回结果"""
+    import requests
+
+    app_id = params.get("app_id", "")
+    app_secret = params.get("app_secret", "")
+
+    if not app_id or not app_secret:
+        emit("error", code="MISSING_PARAMS", message="缺少 AppID 或 AppSecret")
+        return
+
+    # 获取当前出口 IP
+    current_ip = ""
+    try:
+        ip_resp = requests.get("https://ifconfig.me/ip", timeout=5,
+                               headers={"User-Agent": "curl/7.0"})
+        if ip_resp.status_code == 200:
+            current_ip = ip_resp.text.strip()
+    except Exception:
+        pass
+
+    try:
+        url = "https://api.weixin.qq.com/cgi-bin/token"
+        resp = requests.get(url, params={
+            "grant_type": "client_credential",
+            "appid": app_id,
+            "secret": app_secret,
+        }, timeout=10)
+        data = resp.json()
+        logger.info("test_wechat response: %s", json.dumps(data, ensure_ascii=False)[:300])
+
+        if data.get("access_token"):
+            emit("result", status="success", ip=current_ip,
+                 message="连接成功，access_token 获取正常")
+        elif data.get("errcode") == 40164:
+            # IP 不在白名单
+            import re
+            ip_match = re.search(r'invalid ip (\d+\.\d+\.\d+\.\d+)', data.get("errmsg", ""))
+            real_ip = ip_match.group(1) if ip_match else current_ip or "未知"
+            emit("result", status="ip_error", ip=real_ip,
+                 message=f"当前出口 IP: {real_ip}（未在白名单中）")
+        else:
+            emit("error", code="WECHAT_ERROR",
+                 message=f"错误 {data.get('errcode')}: {data.get('errmsg')}")
     except Exception as e:
         emit("error", code="CONNECTION_ERROR", message=f"连接失败: {str(e)}")
 
@@ -696,6 +935,7 @@ def handle_extract_files(params):
 
             results.append({"path": fpath, "name": name, "text": text,
                             "chars": len(text)})
+            logger.info("Extracted %s: %d chars", name, len(text))
         except Exception as e:
             results.append({"path": fpath, "name": name, "error": str(e)})
 
@@ -720,13 +960,13 @@ def _extract_excel(fpath):
 
 
 def _extract_pdf(fpath):
-    """提取 PDF 文件文本"""
+    """提取 PDF 文件文本，pdfplumber 失败时回退到 PyMuPDF"""
     import pdfplumber
     parts = []
     with pdfplumber.open(fpath) as pdf:
         for i, page in enumerate(pdf.pages):
             text = page.extract_text()
-            if text:
+            if text and text.strip():
                 parts.append(f"--- 第 {i+1} 页 ---\n{text}")
             # 提取表格
             tables = page.extract_tables()
@@ -736,7 +976,32 @@ def _extract_pdf(fpath):
                     for row in table
                 )
                 parts.append(f"[表格 {t_idx+1}]\n{table_text}")
-    return "\n\n".join(parts) if parts else "(空 PDF)"
+
+    if parts:
+        logger.info("PDF extracted via pdfplumber: %d parts, %d chars",
+                     len(parts), sum(len(p) for p in parts))
+        return "\n\n".join(parts)
+
+    # pdfplumber 提取失败，尝试 PyMuPDF 回退
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(fpath)
+        for i, page in enumerate(doc):
+            text = page.get_text()
+            if text and text.strip():
+                parts.append(f"--- 第 {i+1} 页 ---\n{text}")
+        doc.close()
+        if parts:
+            logger.info("PDF extracted via PyMuPDF fallback: %d parts, %d chars",
+                         len(parts), sum(len(p) for p in parts))
+            return "\n\n".join(parts)
+    except ImportError:
+        logger.warning("PyMuPDF not installed, cannot fallback")
+    except Exception as e:
+        logger.warning("PyMuPDF fallback failed: %s", e)
+
+    logger.warning("PDF extraction returned empty for: %s", fpath)
+    return "(空 PDF — 无法提取文本，请尝试其他格式)"
 
 
 def _extract_docx(fpath):
@@ -873,9 +1138,15 @@ def handle_publish_wechat(params):
             emit("progress", stage="publish", message="正在上传封面图...")
             thumb_media_id = upload_cover_image(token, cover_path)
 
+        if not thumb_media_id:
+            logger.warning("封面图上传失败或未提供，微信草稿可能无法正常显示")
+            emit("progress", stage="publish",
+                 message="封面图缺失，尝试创建草稿...")
+
         # 创建草稿
         emit("progress", stage="publish", message="正在创建草稿...")
         media_id = create_draft(token, title, html, author, thumb_media_id)
+        logger.info("create_draft returned media_id=%s", media_id)
 
         if media_id:
             # 更新 metadata 状态
@@ -905,7 +1176,7 @@ def handle_publish_wechat(params):
         emit("error", code="PUBLISH_ERROR", message=str(e))
 
 
-def _convert_html_to_format(html_content, target_ext, output_dir):
+def _convert_html_to_format(html_content, target_ext, output_dir, timestamp=""):
     """将 HTML 内容转换为目标格式文件（PDF/DOCX/XLSX）。
 
     作为 Agent 未能生成原格式文件时的兜底方案。
@@ -934,17 +1205,17 @@ def _convert_html_to_format(html_content, target_ext, output_dir):
 
     try:
         if target_ext == "pdf":
-            return _text_to_pdf(text, output_dir)
+            return _text_to_pdf(text, output_dir, timestamp)
         elif target_ext in ("docx", "doc"):
-            return _text_to_docx(text, output_dir)
+            return _text_to_docx(text, output_dir, timestamp)
         elif target_ext in ("xlsx", "xls"):
-            return _text_to_xlsx(text, output_dir)
+            return _text_to_xlsx(text, output_dir, timestamp)
     except Exception as e:
         logger.error("Format conversion failed (%s): %s", target_ext, e)
     return None
 
 
-def _text_to_pdf(text, output_dir):
+def _text_to_pdf(text, output_dir, timestamp=""):
     """用 reportlab 将文本转为 PDF，支持中文。"""
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
@@ -952,7 +1223,8 @@ def _text_to_pdf(text, output_dir):
     from reportlab.pdfbase.ttfonts import TTFont
     import platform
 
-    out_path = os.path.join(output_dir, "translated.pdf")
+    fname = f"translated-{timestamp}.pdf" if timestamp else "translated.pdf"
+    out_path = os.path.join(output_dir, fname)
 
     # 注册中文字体
     font_candidates = []
@@ -1017,10 +1289,11 @@ def _text_to_pdf(text, output_dir):
     return out_path
 
 
-def _text_to_docx(text, output_dir):
+def _text_to_docx(text, output_dir, timestamp=""):
     """用 python-docx 将文本转为 Word 文档。"""
     from docx import Document
-    out_path = os.path.join(output_dir, "translated.docx")
+    fname = f"translated-{timestamp}.docx" if timestamp else "translated.docx"
+    out_path = os.path.join(output_dir, fname)
     doc = Document()
     for line in text.split("\n"):
         if line.strip():
@@ -1029,10 +1302,11 @@ def _text_to_docx(text, output_dir):
     return out_path
 
 
-def _text_to_xlsx(text, output_dir):
+def _text_to_xlsx(text, output_dir, timestamp=""):
     """用 openpyxl 将文本转为 Excel（每行一个单元格）。"""
     from openpyxl import Workbook
-    out_path = os.path.join(output_dir, "translated.xlsx")
+    fname = f"translated-{timestamp}.xlsx" if timestamp else "translated.xlsx"
+    out_path = os.path.join(output_dir, fname)
     wb = Workbook()
     ws = wb.active
     ws.title = "Translation"
@@ -1061,6 +1335,7 @@ def main():
         "generate": handle_generate,
         "agent_generate": handle_agent_generate,
         "validate_key": handle_validate_key,
+        "test_wechat": handle_test_wechat,
         "list_articles": handle_list_articles,
         "get_config": handle_get_config,
         "save_config": handle_save_config,

@@ -64,7 +64,8 @@ export default function ArticleActions({
   const handleOpenFolder = async () => {
     try {
       const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
-      if (article.articlePath) await revealItemInDir(article.articlePath);
+      const targetPath = article.convertedPath || article.articlePath;
+      if (targetPath) await revealItemInDir(targetPath);
     } catch {
       // fallback: do nothing if not in Tauri
     }
@@ -86,11 +87,20 @@ export default function ArticleActions({
     setPublishing(true);
     setPublishMsg("发布中...");
     let unlisten: (() => void) | null = null;
+    let hasError = false;
+    let errorMsg = "";
     try {
       unlisten = await listen<Record<string, unknown>>("sidecar-event", (event) => {
         const d = event.payload;
         if (d.type === "progress" && d.stage === "publish") {
           setPublishMsg((d.message as string) || "处理中...");
+        }
+        if (d.type === "error") {
+          hasError = true;
+          errorMsg = (d.message as string) || "发布失败";
+        }
+        if (d.type === "result" && d.status === "success") {
+          hasError = false;
         }
       });
       await invoke("run_sidecar", {
@@ -99,12 +109,16 @@ export default function ArticleActions({
           app_id: appId,
           app_secret: appSecret,
           article_path: article.articlePath,
-          cover_path: "",
+          cover_path: article.coverPath || "",
           title: article.title,
           author: getConfig("WECHAT_AUTHOR") || "Ink",
         }),
       });
-      setPublishMsg("已发布到草稿箱 ✓");
+      if (hasError) {
+        setPublishMsg(`失败: ${errorMsg}`);
+      } else {
+        setPublishMsg("已发布到草稿箱 ✓");
+      }
     } catch (err) {
       setPublishMsg(`失败: ${err instanceof Error ? err.message : err}`);
     } finally {
@@ -173,7 +187,7 @@ export default function ArticleActions({
           className="w-full px-4 h-9 text-sm rounded-[10px] transition-[background-color,opacity] duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           style={btnOutline}
         >
-          打开文件夹
+          打开文件夹{article.fileType && article.fileType !== "html" ? `（${article.fileType.toUpperCase()}）` : ""}
         </button>
         {hasWechatConfig && article.articlePath && article.status !== "published" && (
           <button

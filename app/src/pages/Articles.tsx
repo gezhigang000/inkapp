@@ -34,6 +34,8 @@ export default function Articles() {
               (a.articles as Record<string, string>[] | undefined)?.[0]
                 ?.cover as string
             ) || undefined,
+          convertedPath: (a.converted_path as string) || undefined,
+          fileType: (a.file_type as string) || "html",
         })
       );
       setArticles(mapped);

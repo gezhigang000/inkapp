@@ -68,9 +68,10 @@ export default function ArticlePreview({ title, htmlContent, coverPath, articleP
   };
 
   const handleOpenFolder = async () => {
-    if (!metadataPath) return;
+    const target = metadataPath || articlePath;
+    if (!target) return;
     try {
-      const dir = metadataPath.replace(/[/\\][^/\\]+$/, "");
+      const dir = target.replace(/[/\\][^/\\]+$/, "");
       await openPath(dir);
     } catch (err) {
       console.error("Failed to open folder:", err);
@@ -149,7 +150,7 @@ export default function ArticlePreview({ title, htmlContent, coverPath, articleP
             {title}
           </h3>
           <div className="flex gap-2 shrink-0">
-            {fileType && fileType !== "html" && metadataPath && (
+            {(metadataPath || articlePath) && (
               <button
                 onClick={handleOpenFolder}
                 className="px-3 h-8 text-xs font-medium rounded-[10px] transition-[background-color] duration-150"
@@ -158,7 +159,9 @@ export default function ArticlePreview({ title, htmlContent, coverPath, articleP
                   color: "oklch(0.30 0.08 145)",
                 }}
               >
-                {fileTypeLabel[fileType] || fileType.toUpperCase()} · 打开目录
+                {fileType && fileType !== "html"
+                  ? `${fileTypeLabel[fileType] || fileType.toUpperCase()} · 打开目录`
+                  : "打开目录"}
               </button>
             )}
             <button

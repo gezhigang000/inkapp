@@ -16,13 +16,18 @@ const inputStyle = {
 
 export default function Create() {
   const navigate = useNavigate();
-  const { getConfig } = useConfig();
+  const { getConfig, updateConfig } = useConfig();
   const { events, isRunning, result, selectedTemplate, params, setParams, startGenerate, stopGenerate } = useGenerate();
   const [selectedProvider, setSelectedProvider] = useState(
     () => getConfig("selected_provider") || "deepseek"
   );
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notice, setNotice] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [coverColor, setCoverColor] = useState(() => getConfig("cover_color_style") || "random");
+  const [coverPattern, setCoverPattern] = useState(() => getConfig("cover_pattern_style") || "random");
+  const [coverShowTitle, setCoverShowTitle] = useState(() => getConfig("cover_show_title") !== "false");
+  const [coverSubtitle, setCoverSubtitle] = useState(() => getConfig("cover_subtitle") || "Ink");
 
   // Redirect to home if no template selected (and not mid-generation)
   useEffect(() => {
@@ -127,6 +132,12 @@ export default function Create() {
       payload.max_turns = selectedTemplate.maxTurns;
     }
 
+    // 封面设置
+    payload.cover_color_style = coverColor;
+    payload.cover_pattern_style = coverPattern;
+    payload.cover_show_title = coverShowTitle;
+    payload.cover_subtitle = coverSubtitle;
+
     startGenerate(payload);
   };
 
@@ -203,6 +214,65 @@ export default function Create() {
             )}
           </div>
           <FileUpload files={uploadedFiles} onFilesChange={setUploadedFiles} />
+
+          {/* 封面与排版设置 */}
+          <div
+            className="rounded-[12px] overflow-hidden"
+            style={{ border: "1px solid oklch(0.91 0 0)" }}
+          >
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-full px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer"
+              style={{ background: "oklch(0.975 0 0)", color: "oklch(0.30 0.005 265)" }}
+            >
+              <span>封面与排版设置</span>
+              <span style={{ color: "oklch(0.50 0 0)", fontSize: 12 }}>
+                {showSettings ? "▲" : "▼"}
+              </span>
+            </button>
+            {showSettings && (
+              <div className="px-4 py-3 space-y-3" style={{ background: "oklch(1 0 0)" }}>
+                <CoverSettingRow label="封面色调">
+                  {(["random", "dark", "light", "colorful"] as const).map((v) => (
+                    <ChipBtn key={v} active={coverColor === v} onClick={() => { setCoverColor(v); updateConfig("cover_color_style", v); }}>
+                      {{ random: "随机", dark: "深色", light: "浅色", colorful: "彩色" }[v]}
+                    </ChipBtn>
+                  ))}
+                </CoverSettingRow>
+                <CoverSettingRow label="封面图案">
+                  {(["random", "geometric", "tech", "wave"] as const).map((v) => (
+                    <ChipBtn key={v} active={coverPattern === v} onClick={() => { setCoverPattern(v); updateConfig("cover_pattern_style", v); }}>
+                      {{ random: "随机", geometric: "几何", tech: "科技", wave: "波纹" }[v]}
+                    </ChipBtn>
+                  ))}
+                </CoverSettingRow>
+                <CoverSettingRow label="封面标题">
+                  <ChipBtn active={coverShowTitle} onClick={() => { setCoverShowTitle(true); updateConfig("cover_show_title", "true"); }}>显示</ChipBtn>
+                  <ChipBtn active={!coverShowTitle} onClick={() => { setCoverShowTitle(false); updateConfig("cover_show_title", "false"); }}>隐藏</ChipBtn>
+                </CoverSettingRow>
+                <CoverSettingRow label="封面署名">
+                  <input
+                    type="text"
+                    value={coverSubtitle}
+                    onChange={(e) => { setCoverSubtitle(e.target.value); updateConfig("cover_subtitle", e.target.value); }}
+                    placeholder="Ink"
+                    className="px-2.5 h-7 text-xs rounded-[8px] w-32"
+                    style={inputStyle}
+                  />
+                </CoverSettingRow>
+                <CoverSettingRow label="文章头部">
+                  <span className="text-xs" style={{ color: "oklch(0.50 0 0)" }}>
+                    {getConfig("ARTICLE_HEADER_HTML") ? "已配置" : "未配置"}（在「设置」页修改）
+                  </span>
+                </CoverSettingRow>
+                <CoverSettingRow label="文章尾部">
+                  <span className="text-xs" style={{ color: "oklch(0.50 0 0)" }}>
+                    {getConfig("ARTICLE_FOOTER_HTML") ? "已配置" : "未配置"}（在「设置」页修改）
+                  </span>
+                </CoverSettingRow>
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -243,5 +313,29 @@ export default function Create() {
         />
       )}
     </div>
+  );
+}
+
+function CoverSettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs shrink-0 w-16" style={{ color: "oklch(0.40 0 0)" }}>{label}</span>
+      <div className="flex items-center gap-1.5 flex-wrap">{children}</div>
+    </div>
+  );
+}
+
+function ChipBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-2.5 h-7 text-xs rounded-[8px] cursor-pointer transition-all duration-150"
+      style={active
+        ? { background: "oklch(0.27 0.005 265)", color: "oklch(0.98 0.002 90)" }
+        : { border: "1px solid oklch(0.88 0 0)", color: "oklch(0.40 0 0)", background: "transparent" }
+      }
+    >
+      {children}
+    </button>
   );
 }

@@ -115,8 +115,8 @@ STRUCTURE_POOL = [
     "实操体：聚焦可以立刻上手试用的更新，给出具体使用建议和踩坑提醒",
 ]
 
-# 封面图配色方案池（以深色为主，护眼舒适）
-COVER_THEMES = [
+# 封面图配色方案池 — 按风格分组
+COVER_THEMES_DARK = [
     {"bg": "#1f2937", "accent": "#6b8aad", "text": "#e5e7eb"},   # 暗钢蓝
     {"bg": "#1e293b", "accent": "#64748b", "text": "#f1f5f9"},   # 深靛
     {"bg": "#2d3748", "accent": "#8fa3bf", "text": "#e2e8f0"},   # 深蓝灰
@@ -126,9 +126,23 @@ COVER_THEMES = [
     {"bg": "#2a2f38", "accent": "#9ca3af", "text": "#f3f4f6"},   # 深石墨
     {"bg": "#1c2a35", "accent": "#6d95b0", "text": "#e0eaf2"},   # 深雾蓝
     {"bg": "#2b2d3a", "accent": "#8b8fad", "text": "#e6e7f0"},   # 暗薰衣草
-    {"bg": "#e5e5e5", "accent": "#555555", "text": "#1a1a1a"},   # 浅灰（经典）
-    {"bg": "#d6dce4", "accent": "#4a5568", "text": "#1a202c"},   # 蓝灰（浅色）
 ]
+COVER_THEMES_LIGHT = [
+    {"bg": "#e5e5e5", "accent": "#555555", "text": "#1a1a1a"},   # 浅灰
+    {"bg": "#d6dce4", "accent": "#4a5568", "text": "#1a202c"},   # 蓝灰
+    {"bg": "#f5f0eb", "accent": "#8b7355", "text": "#2d2418"},   # 暖米白
+    {"bg": "#e8ecf1", "accent": "#5a6b80", "text": "#1e2a3a"},   # 淡蓝
+    {"bg": "#f0ebe5", "accent": "#7a6b5a", "text": "#2a2520"},   # 奶茶色
+]
+COVER_THEMES_COLORFUL = [
+    {"bg": "#312e81", "accent": "#818cf8", "text": "#e0e7ff", "bg2": "#5b21b6"},  # 蓝紫渐变
+    {"bg": "#7c2d12", "accent": "#fb923c", "text": "#fff7ed", "bg2": "#991b1b"},  # 橙红渐变
+    {"bg": "#134e4a", "accent": "#5eead4", "text": "#f0fdfa", "bg2": "#065f46"},  # 青绿渐变
+    {"bg": "#1e3a5f", "accent": "#60a5fa", "text": "#eff6ff", "bg2": "#1e40af"},  # 海蓝渐变
+    {"bg": "#4a1942", "accent": "#e879f9", "text": "#fdf4ff", "bg2": "#701a75"},  # 紫粉渐变
+]
+# 兼容旧代码：合并所有主题
+COVER_THEMES = COVER_THEMES_DARK + COVER_THEMES_LIGHT
 
 
 def pick_daily_variation(today_str):
@@ -905,34 +919,57 @@ def _layout_geo_layers(draw, W, H, accent, bg, rng):
     draw.line([(W - 240, 0), (W, 240)], fill=c2, width=1)
 
 
-# 所有布局函数列表
-_LAYOUT_FUNCS = [
-    _layout_corner_concentric,
-    _layout_network_nodes,
-    _layout_circuit,
-    _layout_arcs_dots,
-    _layout_ripples,
-    _layout_geo_layers,
-]
+# 所有布局函数列表 — 按风格分组
+_LAYOUTS_GEOMETRIC = [_layout_corner_concentric, _layout_arcs_dots, _layout_geo_layers]
+_LAYOUTS_TECH = [_layout_network_nodes, _layout_circuit]
+_LAYOUTS_WAVE = [_layout_ripples]
+_LAYOUT_FUNCS = _LAYOUTS_GEOMETRIC + _LAYOUTS_TECH + _LAYOUTS_WAVE
+
+_LAYOUT_GROUPS = {
+    "geometric": _LAYOUTS_GEOMETRIC,
+    "tech": _LAYOUTS_TECH,
+    "wave": _LAYOUTS_WAVE,
+    "random": _LAYOUT_FUNCS,
+}
 
 
-def _draw_tech_background(draw, W, H, accent_color, bg_color, title=""):
-    """随机选择一种布局风格，绘制科技感几何背景图案"""
+def _draw_tech_background(draw, W, H, accent_color, bg_color, title="",
+                          pattern_style="random"):
+    """选择一种布局风格，绘制科技感几何背景图案"""
     rng = _make_rng(title)
-    layout_idx = rng.randint(0, len(_LAYOUT_FUNCS) - 1)
-    _LAYOUT_FUNCS[layout_idx](draw, W, H, accent_color, bg_color, rng)
+    pool = _LAYOUT_GROUPS.get(pattern_style, _LAYOUT_FUNCS)
+    layout_fn = pool[rng.randint(0, len(pool) - 1)]
+    layout_fn(draw, W, H, accent_color, bg_color, rng)
 
 
-def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
-    """使用 Pillow 生成公众号封面图 (900x383, 2.35:1)，浅色简洁风格，带科技感几何背景"""
+def _pick_cover_theme(color_style="random", rng=None):
+    """根据色调风格选择封面配色"""
+    if rng is None:
+        rng = random.Random()
+    groups = {
+        "dark": COVER_THEMES_DARK,
+        "light": COVER_THEMES_LIGHT,
+        "colorful": COVER_THEMES_COLORFUL,
+    }
+    pool = groups.get(color_style,
+                      COVER_THEMES_DARK + COVER_THEMES_LIGHT + COVER_THEMES_COLORFUL)
+    return rng.choice(pool)
+
+
+def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
+                         color_style="random", pattern_style="random",
+                         show_title=True, subtitle="Ink"):
+    """使用 Pillow 生成公众号封面图 (900x383, 2.35:1)，支持自定义配色/图案/标题/作者"""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         print("[警告] Pillow 未安装，跳过封面图生成")
         return None
 
+    rng = _make_rng(timestamp)
+
     if cover_theme is None:
-        cover_theme = COVER_THEMES[0]
+        cover_theme = _pick_cover_theme(color_style, rng)
 
     W, H = 900, 383
     bg_color = cover_theme["bg"]
@@ -942,8 +979,21 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
     img = Image.new("RGB", (W, H), bg_color)
     draw = ImageDraw.Draw(img)
 
+    # 彩色渐变背景
+    if "bg2" in cover_theme:
+        bg2 = cover_theme["bg2"]
+        bg1_rgb = _hex_to_rgb(bg_color)
+        bg2_rgb = _hex_to_rgb(bg2)
+        for x in range(W):
+            ratio = x / W
+            r = int(bg1_rgb[0] + (bg2_rgb[0] - bg1_rgb[0]) * ratio)
+            g = int(bg1_rgb[1] + (bg2_rgb[1] - bg1_rgb[1]) * ratio)
+            b = int(bg1_rgb[2] + (bg2_rgb[2] - bg1_rgb[2]) * ratio)
+            draw.line([(x, 0), (x, H)], fill=(r, g, b))
+
     # --- 科技感几何背景图案 ---
-    _draw_tech_background(draw, W, H, accent_color, bg_color, title=timestamp)
+    _draw_tech_background(draw, W, H, accent_color, bg_color, title=timestamp,
+                          pattern_style=pattern_style)
 
     # --- 顶部强调色细线 ---
     draw.rectangle([(0, 0), (W, 4)], fill=accent_color)
@@ -968,12 +1018,9 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
         font_title = ImageFont.load_default()
         font_sub = font_title
 
-    # --- 主标题（随机决定是否显示）---
+    # --- 主标题 ---
     if not title:
         title = "AI 前沿动态速递"
-
-    rng = _make_rng(timestamp)
-    show_title = True  # 始终显示标题
 
     if show_title:
         max_width = W - 120
@@ -1007,16 +1054,17 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None):
             draw.text((60, title_y), line, fill=text_color, font=font_title)
             title_y += line_height
 
-        # --- 副标题 ---
-        sub_y = title_y + 12
-        sub_text = "Ink"
-        draw.text((60, sub_y), sub_text, fill="#9ca3af", font=font_sub)
+        # --- 副标题/作者 ---
+        if subtitle:
+            sub_y = title_y + 12
+            draw.text((60, sub_y), subtitle, fill="#9ca3af", font=font_sub)
     else:
         # 无标题模式：只显示副标题，居中偏下
-        sub_text = "Ink"
-        bbox = draw.textbbox((0, 0), sub_text, font=font_sub)
-        sub_w = bbox[2] - bbox[0]
-        draw.text(((W - sub_w) // 2, H - 50), sub_text, fill="#9ca3af", font=font_sub)
+        if subtitle:
+            bbox = draw.textbbox((0, 0), subtitle, font=font_sub)
+            sub_w = bbox[2] - bbox[0]
+            draw.text(((W - sub_w) // 2, H - 50), subtitle,
+                      fill="#9ca3af", font=font_sub)
 
     # --- 底部装饰线 ---
     draw.line([(60, H - 15), (W - 60, H - 15)], fill=accent_color, width=2)

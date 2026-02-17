@@ -75,6 +75,16 @@ def emit(event_type, **kwargs):
         logger.info("emit %s: %s", event_type, msg)
 
 
+def _get_cover_kwargs(params):
+    """从 payload 提取封面设置参数"""
+    return {
+        "color_style": params.get("cover_color_style", "random"),
+        "pattern_style": params.get("cover_pattern_style", "random"),
+        "show_title": params.get("cover_show_title", True),
+        "subtitle": params.get("cover_subtitle", "Ink"),
+    }
+
+
 def _handle_translate_inplace(params, config, file_formats, topic, timestamp,
                               output_dir, header_html, footer_html):
     """原格式翻译：保持文档格式和样式，只替换文字内容。"""
@@ -159,9 +169,11 @@ def _handle_translate_inplace(params, config, file_formats, topic, timestamp,
     today = datetime.now().strftime("%Y-%m-%d")
     variation = pick_daily_variation(today)
     title = f"文档翻译 - {target_lang}"
+    cover_kwargs = _get_cover_kwargs(params)
     cover_path = generate_cover_image(
         timestamp, title, topic, article_dir,
         cover_theme=variation.get("cover_theme"),
+        **cover_kwargs,
     )
 
     # 保存元数据
@@ -376,10 +388,12 @@ def handle_generate(params):
             filepaths.append(str(filepath))
 
             emit("progress", stage="cover", message=f"正在生成封面图...", percent=70 + idx * 10)
+            cover_kwargs = _get_cover_kwargs(params)
             cover_path = generate_cover_image(
                 f"{timestamp}{suffix}", part_title,
                 effective_topic or "", output_dir,
                 cover_theme=variation.get("cover_theme"),
+                **cover_kwargs,
             )
             img_paths.append(str(cover_path) if cover_path else "")
 
@@ -592,12 +606,12 @@ def handle_agent_generate(params):
         emit("progress", stage="cover", message="正在生成封面图...", percent=70)
         today = datetime.now().strftime("%Y-%m-%d")
         variation = pick_daily_variation(today)
+        cover_kwargs = _get_cover_kwargs(params)
         cover_path = generate_cover_image(
             timestamp, title, topic, output_dir,
             cover_theme=variation.get("cover_theme"),
+            **cover_kwargs,
         )
-
-        # 复制原格式文件到文章目录
         article_dir = os.path.dirname(str(filepath))
         file_type = "html"
         for fname in output_files:

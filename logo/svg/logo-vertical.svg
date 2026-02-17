@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 152" width="108" height="152">
+  <!--
+    Ink Logo — Vertical: Icon on top + "Ink" below with border
+    Color: Deep charcoal gray #2b2d33
+  -->
+  <!-- Rounded border frame -->
+  <rect x="1.5" y="1.5" width="105" height="149" rx="10" ry="10" fill="none" stroke="#2b2d33" stroke-width="2"/>
+  <!-- Icon group -->
+  <g>
+    <!-- Main ink drop -->
+    <path d="M54 18 C54 18, 36 46, 36 60 C36 70.5 44.06 79 54 79 C63.94 79 72 70.5 72 60 C72 46 54 18 54 18Z" fill="#2b2d33"/>
+    <!-- Splash rings -->
+    <ellipse cx="54" cy="84" rx="14" ry="3.5" fill="none" stroke="#2b2d33" stroke-width="1.8" opacity="0.35"/>
+    <ellipse cx="54" cy="84" rx="8" ry="2" fill="none" stroke="#2b2d33" stroke-width="1.2" opacity="0.2"/>
+  </g>
+  <!-- "Ink" text centered below -->
+  <text x="54" y="132" text-anchor="middle" font-family="'Geist Sans', system-ui, -apple-system, 'Helvetica Neue', sans-serif" font-size="36" font-weight="600" fill="#2b2d33" letter-spacing="-0.5">Ink</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" width="1000" height="300">
+  <!-- Trademark Text — Pure "Ink" wordmark with border -->
+  <rect width="1000" height="300" fill="#ffffff"/>
+  <rect x="4" y="4" width="992" height="292" rx="10" ry="10" fill="none" stroke="#2b2d33" stroke-width="4"/>
+  <text x="500" y="200" text-anchor="middle" font-family="'Geist Sans', system-ui, -apple-system, 'Helvetica Neue', sans-serif" font-size="160" font-weight="600" fill="#2b2d33" letter-spacing="-4">Ink</text>
+</svg>

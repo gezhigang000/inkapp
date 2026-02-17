@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ink Logo — Asset Preview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+      --bg: #ffffff;
+      --fg: #2b2d33;
+      --card: #ffffff;
+      --muted: #7a7a7a;
+      --border: #ebebeb;
+      --accent: #f5f5f5;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+      --radius: 10px;
+      --radius-xl: 14px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #1a1b1f;
+      --fg: #e0e0e0;
+      --card: #242529;
+      --muted: #888888;
+      --border: #3a3a3f;
+      --accent: #2f3035;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Geist Sans', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+      transition: background-color 150ms ease-out, color 150ms ease-out;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 64px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .theme-toggle {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+      cursor: pointer;
+      transition: background-color 150ms ease-out;
+      font-family: inherit;
+    }
+
+    .theme-toggle:hover {
+      background: var(--border);
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .section-desc {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    /* Asset Grid */
+    .asset-grid {
+      display: grid;
+      gap: 24px;
+    }
+
+    .asset-grid.cols-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .asset-grid.cols-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .asset-grid.cols-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .asset-grid.cols-5 {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      .asset-grid.cols-2,
+      .asset-grid.cols-3,
+      .asset-grid.cols-4,
+      .asset-grid.cols-5 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Asset Card */
+    .asset-card {
+      background: var(--card);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: box-shadow 150ms ease-out;
+    }
+
+    [data-theme="dark"] .asset-card {
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+
+    .asset-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .asset-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      min-height: 160px;
+      position: relative;
+    }
+
+    .asset-preview.checkerboard {
+      background-image:
+        linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+
+    [data-theme="dark"] .asset-preview.checkerboard {
+      background-image:
+        linear-gradient(45deg, #2a2a2f 25%, transparent 25%),
+        linear-gradient(-45deg, #2a2a2f 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #2a2a2f 75%),
+        linear-gradient(-45deg, transparent 75%, #2a2a2f 75%);
+    }
+
+    .asset-preview.dark-bg {
+      background: #2b2d33;
+    }
+
+    .asset-preview.light-bg {
+      background: #ffffff;
+    }
+
+    [data-theme="dark"] .asset-preview.light-bg {
+      background: #ffffff;
+    }
+
+    .asset-preview img {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+    }
+
+    .asset-preview img.small-icon {
+      max-height: 64px;
+      image-rendering: pixelated;
+    }
+
+    .asset-preview img.medium-icon {
+      max-height: 120px;
+    }
+
+    .asset-info {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .asset-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .asset-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* SVG inline display */
+    .svg-inline {
+      max-width: 100%;
+      max-height: 200px;
+    }
+
+    /* Wide card for horizontal logos */
+    .asset-grid.cols-1 {
+      grid-template-columns: 1fr;
+    }
+
+    .asset-preview.wide {
+      padding: 48px 64px;
+    }
+
+    /* OG image preview */
+    .asset-preview.og {
+      padding: 24px;
+    }
+
+    .asset-preview.og img {
+      max-height: 315px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Badge for file size */
+    .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-left: 8px;
+      font-weight: 400;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <h1>Ink Logo Assets</h1>
+        <p>Scheme A — Ink Drop &middot; Complete asset package</p>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-label">Dark</span>
+      </button>
+    </div>
+
+    <!-- ===== 1. SVG Variants ===== -->
+    <div class="section">
+      <h2 class="section-title">Logo Variants</h2>
+      <p class="section-desc">SVG vector source files. Scalable to any size.</p>
+
+      <!-- Row 1: Icon variants (3 columns) -->
+      <div class="asset-grid cols-3" style="margin-bottom: 24px;">
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="svg/logo-icon.svg" alt="Logo Icon" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">logo-icon.svg</div>
+            <div class="asset-meta">Pure icon (ink drop)</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="svg/logo-icon-rounded.svg" alt="Logo Icon Rounded" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">logo-icon-rounded.svg</div>
+            <div class="asset-meta">With rounded rect background</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview dark-bg">
+            <img src="svg/logo-icon-dark.svg" alt="Logo Icon Dark" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">logo-icon-dark.svg</div>
+            <div class="asset-meta">Inverted for dark backgrounds</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Horizontal variants (2 columns) -->
+      <div class="asset-grid cols-2" style="margin-bottom: 24px;">
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="svg/logo-horizontal.svg" alt="Logo Horizontal">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">logo-horizontal.svg</div>
+            <div class="asset-meta">Icon + "Ink" text</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="svg/logo-horizontal-slogan.svg" alt="Logo Horizontal with Slogan">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">logo-horizontal-slogan.svg</div>
+            <div class="asset-meta">Icon + "Ink" + slogan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Vertical variant -->
+      <div class="asset-grid cols-3">
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="svg/logo-vertical.svg" alt="Logo Vertical">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">logo-vertical.svg</div>
+            <div class="asset-meta">Icon on top + "Ink" below</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 2. Website Assets ===== -->
+    <div class="section">
+      <h2 class="section-title">Website Assets</h2>
+      <p class="section-desc">Favicons, touch icons, and social sharing image.</p>
+
+      <!-- Favicons row -->
+      <div class="asset-grid cols-5" style="margin-bottom: 24px;">
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="website/favicon-16x16.png" alt="Favicon 16" class="small-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">favicon-16x16.png</div>
+            <div class="asset-meta">Browser tab</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="website/favicon-32x32.png" alt="Favicon 32" class="small-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">favicon-32x32.png</div>
+            <div class="asset-meta">Browser tab (HiDPI)</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="website/favicon-48x48.png" alt="Favicon 48" class="small-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">favicon-48x48.png</div>
+            <div class="asset-meta">Windows shortcut</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="website/apple-touch-icon.png" alt="Apple Touch Icon" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">apple-touch-icon.png</div>
+            <div class="asset-meta">180&times;180 &middot; iOS bookmark</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="website/android-chrome-192x192.png" alt="Android Chrome 192" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">android-chrome-192.png</div>
+            <div class="asset-meta">192&times;192 &middot; Android home</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OG Image -->
+      <div class="asset-grid cols-1">
+        <div class="asset-card">
+          <div class="asset-preview og checkerboard">
+            <img src="website/og-image.png" alt="OG Image">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">og-image.png <span class="badge">1200&times;630</span></div>
+            <div class="asset-meta">Social media sharing card</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 3. App Icons ===== -->
+    <div class="section">
+      <h2 class="section-title">App Icons</h2>
+      <p class="section-desc">Application icons for iOS, Android, macOS, and Windows.</p>
+
+      <div class="asset-grid cols-5">
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="app/app-icon-1024.png" alt="App Icon 1024" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">app-icon-1024.png</div>
+            <div class="asset-meta">1024&times;1024 &middot; iOS App Store</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="app/app-icon-512.png" alt="App Icon 512" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">app-icon-512.png</div>
+            <div class="asset-meta">512&times;512 &middot; Play Store / macOS</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="app/app-icon-256.png" alt="App Icon 256" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">app-icon-256.png</div>
+            <div class="asset-meta">256&times;256 &middot; macOS</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="app/app-icon-128.png" alt="App Icon 128" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">app-icon-128.png</div>
+            <div class="asset-meta">128&times;128 &middot; macOS / Windows</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview checkerboard">
+            <img src="app/app-icon-64.png" alt="App Icon 64" class="small-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">app-icon-64.png</div>
+            <div class="asset-meta">64&times;64 &middot; Windows</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 4. Trademark ===== -->
+    <div class="section">
+      <h2 class="section-title">Trademark</h2>
+      <p class="section-desc">Clean, high-resolution images for trademark registration.</p>
+
+      <!-- Row 1: BW + WB -->
+      <div class="asset-grid cols-2" style="margin-bottom: 24px;">
+        <div class="asset-card">
+          <div class="asset-preview light-bg">
+            <img src="trademark/trademark-bw.png" alt="Trademark B/W" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">trademark-bw.png <span class="badge">800&times;800</span></div>
+            <div class="asset-meta">Black ink drop on white</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview dark-bg">
+            <img src="trademark/trademark-wb.png" alt="Trademark W/B" class="medium-icon">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">trademark-wb.png <span class="badge">800&times;800</span></div>
+            <div class="asset-meta">White ink drop on black</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Combos -->
+      <div class="asset-grid cols-1" style="margin-bottom: 24px;">
+        <div class="asset-card">
+          <div class="asset-preview light-bg wide">
+            <img src="trademark/trademark-combo-h.png" alt="Trademark Combo Horizontal">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">trademark-combo-h.png <span class="badge">1000&times;400</span></div>
+            <div class="asset-meta">Horizontal: icon + "Ink" text</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-grid cols-2">
+        <div class="asset-card">
+          <div class="asset-preview light-bg">
+            <img src="trademark/trademark-combo-v.png" alt="Trademark Combo Vertical" class="medium-icon" style="max-height: 240px;">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">trademark-combo-v.png <span class="badge">600&times;800</span></div>
+            <div class="asset-meta">Vertical: icon top + "Ink" below</div>
+          </div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview light-bg wide">
+            <img src="trademark/trademark-text.png" alt="Trademark Text">
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">trademark-text.png <span class="badge">1000&times;300</span></div>
+            <div class="asset-meta">Pure "Ink" wordmark</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const label = document.getElementById('theme-label');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        label.textContent = 'Dark';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        label.textContent = 'Light';
+      }
+    }
+  </script>
+</body>
+</html>

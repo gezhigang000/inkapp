@@ -979,17 +979,18 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
     img = Image.new("RGB", (W, H), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # 彩色渐变背景
+    # 彩色渐变背景（10px 条带，性能优化）
     if "bg2" in cover_theme:
         bg2 = cover_theme["bg2"]
         bg1_rgb = _hex_to_rgb(bg_color)
         bg2_rgb = _hex_to_rgb(bg2)
-        for x in range(W):
+        strip = 10
+        for x in range(0, W, strip):
             ratio = x / W
             r = int(bg1_rgb[0] + (bg2_rgb[0] - bg1_rgb[0]) * ratio)
             g = int(bg1_rgb[1] + (bg2_rgb[1] - bg1_rgb[1]) * ratio)
             b = int(bg1_rgb[2] + (bg2_rgb[2] - bg1_rgb[2]) * ratio)
-            draw.line([(x, 0), (x, H)], fill=(r, g, b))
+            draw.rectangle([(x, 0), (x + strip, H)], fill=(r, g, b))
 
     # --- 科技感几何背景图案 ---
     _draw_tech_background(draw, W, H, accent_color, bg_color, title=timestamp,
@@ -1055,15 +1056,15 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
             title_y += line_height
 
         # --- 副标题/作者 ---
-        if subtitle:
+        if subtitle and subtitle.strip():
             sub_y = title_y + 12
-            draw.text((60, sub_y), subtitle, fill="#9ca3af", font=font_sub)
+            draw.text((60, sub_y), subtitle.strip(), fill="#9ca3af", font=font_sub)
     else:
         # 无标题模式：只显示副标题，居中偏下
-        if subtitle:
-            bbox = draw.textbbox((0, 0), subtitle, font=font_sub)
+        if subtitle and subtitle.strip():
+            bbox = draw.textbbox((0, 0), subtitle.strip(), font=font_sub)
             sub_w = bbox[2] - bbox[0]
-            draw.text(((W - sub_w) // 2, H - 50), subtitle,
+            draw.text(((W - sub_w) // 2, H - 50), subtitle.strip(),
                       fill="#9ca3af", font=font_sub)
 
     # --- 底部装饰线 ---

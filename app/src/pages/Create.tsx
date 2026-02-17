@@ -222,6 +222,8 @@ export default function Create() {
           >
             <button
               onClick={() => setShowSettings(!showSettings)}
+              aria-expanded={showSettings}
+              aria-label="封面与排版设置"
               className="w-full px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer"
               style={{ background: "oklch(0.975 0 0)", color: "oklch(0.30 0.005 265)" }}
             >

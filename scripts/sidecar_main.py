@@ -203,6 +203,7 @@ def _handle_translate_inplace(params, config, file_formats, topic, timestamp,
     emit("progress", stage="done", message="翻译完成！", percent=100)
     emit("result", status="success", title=title,
          article_path=html_path, metadata_path=meta_path,
+         cover_path=str(cover_path) if cover_path else "",
          file_type=file_type, article_count=1)
 
 
@@ -456,6 +457,7 @@ def handle_generate(params):
         emit("progress", stage="done", message="生成完成！", percent=100)
         emit("result", status="success", title=title,
              article_path=filepaths[0], metadata_path=meta_path,
+             cover_path=img_paths[0] if img_paths else "",
              file_type=file_type, article_count=len(articles))
 
     except SystemExit as e:
@@ -645,6 +647,7 @@ def handle_agent_generate(params):
         emit("progress", stage="done", message="Agent 创作完成！", percent=100)
         emit("result", status="success", title=title,
              article_path=str(filepath), metadata_path=meta_path,
+             cover_path=str(cover_path) if cover_path else "",
              file_type=file_type, article_count=1)
 
     except SystemExit as e:

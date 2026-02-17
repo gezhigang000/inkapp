@@ -94,11 +94,20 @@ export default function ArticlePreview({ title, htmlContent, coverPath, articleP
     setPublishMsg({ type: "progress", text: "正在发布..." });
 
     let unlisten: (() => void) | null = null;
+    let lastStatus = "" as string;
+    let lastErrorMsg = "";
     try {
       unlisten = await listen<Record<string, unknown>>("sidecar-event", (event) => {
         const d = event.payload;
         if (d.type === "progress" && d.stage === "publish") {
           setPublishMsg({ type: "progress", text: (d.message as string) || "处理中..." });
+        }
+        if (d.type === "error") {
+          lastStatus = "error";
+          lastErrorMsg = (d.message as string) || "发布失败";
+        }
+        if (d.type === "result" && d.status === "success") {
+          lastStatus = "success";
         }
       });
 
@@ -113,7 +122,12 @@ export default function ArticlePreview({ title, htmlContent, coverPath, articleP
           author: getConfig("WECHAT_AUTHOR") || "Ink",
         }),
       });
-      setPublishMsg({ type: "success", text: "已发布到微信公众号草稿箱 ✓" });
+      await new Promise((r) => setTimeout(r, 100));
+      if (lastStatus === "error") {
+        setPublishMsg({ type: "error", text: `发布失败: ${lastErrorMsg}` });
+      } else {
+        setPublishMsg({ type: "success", text: "已发布到微信公众号草稿箱 ✓" });
+      }
     } catch (err) {
       setPublishMsg({ type: "error", text: `发布失败: ${err instanceof Error ? err.message : err}` });
     } finally {

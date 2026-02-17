@@ -72,7 +72,7 @@ export function GenerateProvider({ children }: { children: ReactNode }) {
               setResult({
                 title: data.title || "未命名文章",
                 htmlContent: html,
-                coverPath: undefined,
+                coverPath: (data.cover_path as string) || undefined,
                 articlePath: data.article_path as string || undefined,
                 fileType: (data.file_type as string) || "html",
                 metadataPath: (data.metadata_path as string) || undefined,

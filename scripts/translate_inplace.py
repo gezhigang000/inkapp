@@ -10,7 +10,6 @@
 
 import os
 import logging
-import json
 import re
 
 logger = logging.getLogger("ink")
@@ -33,12 +32,16 @@ def translate_file_inplace(input_path, output_path, target_lang, config,
     """
     ext = os.path.splitext(input_path)[1].lower()
 
-    if ext in (".docx", ".doc"):
+    if ext == ".docx":
         return _translate_docx(input_path, output_path, target_lang,
                                config, emit_fn)
-    elif ext in (".pptx", ".ppt"):
+    elif ext == ".pptx":
         return _translate_pptx(input_path, output_path, target_lang,
                                config, emit_fn)
+    elif ext in (".doc", ".ppt"):
+        logger.error("旧版 Office 格式 %s 不支持原格式翻译，请转换为 %sx 后重试",
+                     ext, ext)
+        return None
     elif ext == ".pdf":
         return _translate_pdf(input_path, output_path, target_lang,
                               config, emit_fn)
@@ -53,8 +56,6 @@ def translate_file_inplace(input_path, output_path, target_lang, config,
 
 # 每批最大字符数（避免超出 LLM 上下文）
 BATCH_MAX_CHARS = 8000
-# 分隔符
-SEP = "|||"
 
 
 def _batch_translate(segments, target_lang, config, emit_fn=None):
@@ -305,54 +306,60 @@ def _translate_pdf(input_path, output_path, target_lang, config, emit_fn):
 
     translations = _batch_translate(segments, target_lang, config, emit_fn)
 
-    # 回写：逐页处理
+    # 回写：按页分组，每页先收集所有 redaction，apply 一次，再插入文本
     if emit_fn:
         emit_fn("progress", stage="writing",
                 message="正在写入翻译后的 PDF...")
 
+    # 按页分组需要替换的 span
+    from collections import defaultdict
+    page_edits = defaultdict(list)  # page_idx -> [(rect, translation, font_size, color)]
     for i, (page_idx, rect, orig_text, font_size, font_name, color) in \
             enumerate(all_blocks):
         if i >= len(translations) or not translations[i].strip():
             continue
         if translations[i] == orig_text:
             continue
+        page_edits[page_idx].append((rect, translations[i], font_size, color))
 
+    for page_idx, edits in page_edits.items():
         page = doc[page_idx]
 
-        # 用白色矩形覆盖原文
-        page.add_redact_annot(rect)
+        # 第一遍：添加所有 redaction 注释
+        for rect, _, _, _ in edits:
+            page.add_redact_annot(rect)
+        # 一次性应用所有 redaction
         page.apply_redactions()
 
-        # 选择字体：尝试使用中日韩字体
-        use_font = "china-s"  # PyMuPDF 内置中文字体
-        if any(ord(c) > 0x3000 for c in translations[i]):
+        # 第二遍：插入所有翻译文本
+        for rect, text, font_size, color in edits:
+            # 选择字体
             use_font = "china-s"
+            if not any(ord(c) > 0x3000 for c in text):
+                use_font = "helv"
 
-        # 插入翻译文本
-        # 调整字号以适应原始区域
-        adjusted_size = font_size
-        if rect.height > 0:
-            adjusted_size = min(font_size, max(rect.height * 0.8, 6.0))
-        try:
-            page.insert_textbox(
-                rect, translations[i],
-                fontsize=adjusted_size,
-                fontname=use_font,
-                color=_int_to_rgb(color),
-                align=0,  # 左对齐
-            )
-        except Exception as e:
-            logger.warning("Failed to insert text at page %d: %s",
-                           page_idx, e)
-            # 回退：用默认字体
+            adjusted_size = font_size
+            if rect.height > 0:
+                adjusted_size = min(font_size, max(rect.height * 0.8, 6.0))
             try:
                 page.insert_textbox(
-                    rect, translations[i],
+                    rect, text,
                     fontsize=adjusted_size,
+                    fontname=use_font,
+                    color=_int_to_rgb(color),
                     align=0,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to insert text at page %d: %s",
+                               page_idx, e)
+                try:
+                    page.insert_textbox(
+                        rect, text,
+                        fontsize=adjusted_size,
+                        align=0,
+                    )
+                except Exception:
+                    pass
 
     doc.save(output_path)
     doc.close()

@@ -1052,8 +1052,9 @@ def get_access_token(app_id, app_secret):
     data = resp.json()
 
     if "access_token" not in data:
-        _logger.error("获取 access_token 失败: %s", data)
-        sys.exit(1)
+        _logger.error("获取 access_token 失败: errcode=%s errmsg=%s",
+                      data.get("errcode"), data.get("errmsg"))
+        raise RuntimeError(f"获取 access_token 失败: {data.get('errmsg', '未知错误')}")
 
     return data["access_token"]
 
@@ -1186,7 +1187,9 @@ def create_draft(access_token, title, html_content, author, thumb_media_id=None)
     resp = requests.post(url, data=body, headers={"Content-Type": "application/json"}, timeout=30)
     data = resp.json()
 
-    _logger.info("create_draft response: %s", json_mod.dumps(data, ensure_ascii=False)[:500])
+    # 脱敏日志：不记录完整响应（可能含 token 信息）
+    safe_keys = {k: v for k, v in data.items() if k in ("errcode", "errmsg", "media_id")}
+    _logger.info("create_draft response: %s", json_mod.dumps(safe_keys, ensure_ascii=False))
 
     # 微信 API 错误检查：errcode 非 0 表示失败
     if data.get("errcode", 0) != 0:

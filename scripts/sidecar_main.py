@@ -230,19 +230,21 @@ def _extract_preview_text(file_path, ext):
 
 def _build_preview_html(preview_texts, target_lang):
     """构建翻译预览 HTML"""
+    import html as html_mod
     font = "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif"
     parts = [
         f'<section style="padding:20px 0;font-family:{font};">',
         f'<h2 style="font-size:18px;color:#333;margin-bottom:16px;">'
-        f'翻译预览（{target_lang}）</h2>',
+        f'翻译预览（{html_mod.escape(target_lang)}）</h2>',
         '<p style="font-size:13px;color:#999;margin-bottom:20px;">'
         '以下为翻译后文档的部分内容预览，完整文件请点击「打开文件夹」查看。</p>',
     ]
     for text in preview_texts:
+        escaped = html_mod.escape(text)
         parts.append(
             f'<div style="padding:16px;background:#f8f9fa;border-radius:8px;'
             f'margin-bottom:12px;font-size:14px;line-height:1.8;color:#333;">'
-            f'{text}</div>'
+            f'{escaped}</div>'
         )
     parts.append('</section>')
     return "\n".join(parts)
@@ -707,7 +709,11 @@ def handle_test_wechat(params):
             "secret": app_secret,
         }, timeout=10)
         data = resp.json()
-        logger.info("test_wechat response: %s", json.dumps(data, ensure_ascii=False)[:300])
+        # 脱敏日志：不记录 access_token
+        safe_data = {k: ("***" if k == "access_token" else v)
+                     for k, v in data.items()}
+        logger.info("test_wechat response: %s",
+                    json.dumps(safe_data, ensure_ascii=False)[:300])
 
         if data.get("access_token"):
             emit("result", status="success", ip=current_ip,
@@ -1169,7 +1175,7 @@ def handle_publish_wechat(params):
         else:
             emit("error", code="DRAFT_FAILED", message="创建草稿失败，请检查文章内容")
 
-    except SystemExit:
+    except (SystemExit, RuntimeError):
         emit("error", code="AUTH_FAILED", message="access_token 获取失败，请检查 AppID/AppSecret 和 IP 白名单")
     except Exception as e:
         logger.exception("publish_wechat error")

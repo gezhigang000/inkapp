@@ -87,8 +87,8 @@ export default function ArticleActions({
     setPublishing(true);
     setPublishMsg("发布中...");
     let unlisten: (() => void) | null = null;
-    let hasError = false;
-    let errorMsg = "";
+    let lastStatus = "" as string;
+    let lastErrorMsg = "";
     try {
       unlisten = await listen<Record<string, unknown>>("sidecar-event", (event) => {
         const d = event.payload;
@@ -96,11 +96,11 @@ export default function ArticleActions({
           setPublishMsg((d.message as string) || "处理中...");
         }
         if (d.type === "error") {
-          hasError = true;
-          errorMsg = (d.message as string) || "发布失败";
+          lastStatus = "error";
+          lastErrorMsg = (d.message as string) || "发布失败";
         }
         if (d.type === "result" && d.status === "success") {
-          hasError = false;
+          lastStatus = "success";
         }
       });
       await invoke("run_sidecar", {
@@ -114,8 +114,10 @@ export default function ArticleActions({
           author: getConfig("WECHAT_AUTHOR") || "Ink",
         }),
       });
-      if (hasError) {
-        setPublishMsg(`失败: ${errorMsg}`);
+      // 等待事件循环处理完最后的 sidecar-event
+      await new Promise((r) => setTimeout(r, 100));
+      if (lastStatus === "error") {
+        setPublishMsg(`失败: ${lastErrorMsg}`);
       } else {
         setPublishMsg("已发布到草稿箱 ✓");
       }

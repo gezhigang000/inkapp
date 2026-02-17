@@ -968,7 +968,7 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
 
     rng = _make_rng(timestamp)
 
-    if cover_theme is None:
+    if cover_theme is None or color_style != "random":
         cover_theme = _pick_cover_theme(color_style, rng)
 
     W, H = 900, 383

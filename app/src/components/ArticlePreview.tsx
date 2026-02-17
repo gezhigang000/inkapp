@@ -71,8 +71,8 @@ export default function ArticlePreview({ title, htmlContent, coverPath, articleP
     const target = metadataPath || articlePath;
     if (!target) return;
     try {
-      const dir = target.replace(/[/\\][^/\\]+$/, "");
-      await openPath(dir);
+      const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+      await revealItemInDir(target);
     } catch (err) {
       console.error("Failed to open folder:", err);
     }

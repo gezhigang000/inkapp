@@ -300,6 +300,7 @@ def handle_generate(params):
     file_contents = params.get("file_contents", "")  # 上传文件提取的文本
     template_prompt = params.get("template_prompt", "")  # 模板自定义提示词
     file_formats = params.get("file_formats", None)  # 上传文件格式信息
+    layout_style = params.get("layout_style", "")  # 排版样式
     header_html = params.get("header_html", "")  # 文章头部模板
     footer_html = params.get("footer_html", "")  # 文章尾部模板
     # OSS 云存储配置
@@ -348,7 +349,8 @@ def handle_generate(params):
         emit("progress", stage="generating", message="正在生成文章...", percent=20)
         html_content = generate_article(topic=effective_topic, config=config,
                                         custom_prompt=template_prompt,
-                                        file_contents=file_contents)
+                                        file_contents=file_contents,
+                                        layout_style=layout_style)
         if not html_content:
             emit("error", code="GENERATION_FAILED", message="文章生成失败，未获得输出")
             return
@@ -501,6 +503,7 @@ def handle_agent_generate(params):
     topic = params.get("topic", "")
     file_contents = params.get("file_contents", "")
     template_prompt = params.get("template_prompt", "")
+    layout_style = params.get("layout_style", "")
     header_html = params.get("header_html", "")
     footer_html = params.get("footer_html", "")
     file_formats = params.get("file_formats", None)
@@ -553,6 +556,7 @@ def handle_agent_generate(params):
             file_contents=file_contents,
             file_formats=file_formats,
             max_turns=turns,
+            layout_style=layout_style,
         )
 
         if not html_content:

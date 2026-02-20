@@ -483,7 +483,7 @@ def call_llm_with_tools(messages, config, tools=None):
 
 def run_agent_loop(topic, config, emit_fn, workspace,
                    template_prompt="", file_contents="",
-                   file_formats=None, max_turns=15):
+                   file_formats=None, max_turns=15, layout_style=""):
     """
     Run the multi-turn agent loop.
 
@@ -512,7 +512,7 @@ def run_agent_loop(topic, config, emit_fn, workspace,
                        "HTML 以 <section 开头，以 </section> 结尾。"]:
             template_prompt = template_prompt.replace(phrase, "")
 
-    system_prompt = get_agent_system_prompt(template_prompt, file_formats)
+    system_prompt = get_agent_system_prompt(template_prompt, file_formats, layout_style)
 
     # Build user message — 根据场景调整措辞
     if file_formats:

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PromptTemplate } from "../data/prompt-templates";
+import { LAYOUT_STYLES } from "../data/prompt-templates";
+import type { LayoutStyle } from "../data/prompt-templates";
 
 const ICONS = ["🔬", "📰", "🎬", "📖", "⚡", "🧠", "💡", "🎯", "📊", "🚀", "✍️", "🔍"];
 const COLORS = [
@@ -30,6 +32,7 @@ export default function TemplateEditModal({ open, template, isOverridden, onSave
   const [color, setColor] = useState(COLORS[0]);
   const [prompt, setPrompt] = useState("");
   const [inputType, setInputType] = useState<"topic" | "video">("topic");
+  const [layoutStyle, setLayoutStyle] = useState<LayoutStyle>("modular");
 
   useEffect(() => {
     if (template) {
@@ -39,6 +42,7 @@ export default function TemplateEditModal({ open, template, isOverridden, onSave
       setColor(template.color);
       setPrompt(template.prompt);
       setInputType(template.inputType);
+      setLayoutStyle(template.layoutStyle || "modular");
     } else {
       setName("");
       setDescription("");
@@ -46,6 +50,7 @@ export default function TemplateEditModal({ open, template, isOverridden, onSave
       setColor(COLORS[0]);
       setPrompt("请围绕「{{TOPIC}}」撰写一篇微信公众号文章。");
       setInputType("topic");
+      setLayoutStyle("modular");
     }
   }, [template, open]);
 
@@ -53,7 +58,7 @@ export default function TemplateEditModal({ open, template, isOverridden, onSave
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), description: description.trim(), icon, color, prompt, inputType });
+    onSave({ name: name.trim(), description: description.trim(), icon, color, prompt, inputType, layoutStyle });
     onClose();
   };
 
@@ -120,6 +125,27 @@ export default function TemplateEditModal({ open, template, isOverridden, onSave
               >{t === "topic" ? "主题输入" : "视频链接"}</button>
             ))}
           </div>
+        </div>
+
+        {/* Layout style */}
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: "oklch(0.30 0.005 265)" }}>排版样式</label>
+          <div className="flex flex-wrap gap-2">
+            {LAYOUT_STYLES.map((ls) => (
+              <button key={ls.id} onClick={() => setLayoutStyle(ls.id)}
+                className="px-3 h-8 text-sm rounded-[8px] transition-all duration-150"
+                style={{
+                  background: layoutStyle === ls.id ? "oklch(0.40 0.005 265)" : "transparent",
+                  color: layoutStyle === ls.id ? "oklch(0.97 0 0)" : "oklch(0.50 0 0)",
+                  border: layoutStyle === ls.id ? "none" : "1px solid oklch(0.91 0 0)",
+                }}
+                title={ls.description}
+              >{ls.label}</button>
+            ))}
+          </div>
+          <p className="text-xs mt-1" style={{ color: "oklch(0.60 0 0)" }}>
+            {LAYOUT_STYLES.find((ls) => ls.id === layoutStyle)?.description}
+          </p>
         </div>
 
         {/* Prompt */}

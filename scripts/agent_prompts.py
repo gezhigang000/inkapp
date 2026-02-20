@@ -7,14 +7,80 @@ Agent 系统提示词。
 
 from datetime import datetime
 
+# ---------------------------------------------------------------------------
+# 排版样式指令映射
+# ---------------------------------------------------------------------------
 
-def get_agent_system_prompt(template_prompt="", file_formats=None):
+LAYOUT_INSTRUCTIONS = {
+    "modular": """
+## 排版结构：模块式
+
+- 每个主题/章节用不同主题色的 PART 标签区分（如 PART 1、PART 2）
+- PART 标签样式：圆角色块 + 白色文字，每个 PART 使用不同的主题色
+- 各模块之间用 24px 间距分隔
+- 适合多主题并列的内容""",
+
+    "chapter": """
+## 排版结构：章节式
+
+- 使用中文数字编号分章节（一、二、三…）或数字编号（01 / 02 / 03）
+- 章节标题用 18px 加粗，带左侧 4px 彩色竖线装饰
+- 章节之间用 32px 间距分隔
+- 不要使用 PART 标签
+- 适合有递进逻辑的教程、指南类内容""",
+
+    "card": """
+## 排版结构：卡片式
+
+- 每个要点/观点用独立卡片呈现（圆角边框 + 浅色背景 + 16px 内边距）
+- 卡片之间用 16px 间距分隔
+- 不使用编号或 PART 标签
+- 每张卡片可以有自己的小标题（15px 加粗）
+- 适合要点罗列、快速阅读的内容""",
+
+    "narrative": """
+## 排版结构：叙事式
+
+- 自然段落流，不使用任何分区标签、编号或卡片
+- 段落之间用 20px 间距自然过渡
+- 小标题用 17px 加粗即可，不需要装饰
+- 重点句子可用加粗或彩色强调，但不要过度
+- 适合深度分析、故事、访谈类内容""",
+
+    "custom": "",  # 由用户提示词自行控制
+}
+
+# ---------------------------------------------------------------------------
+# HTML 质量规则（所有样式通用）
+# ---------------------------------------------------------------------------
+
+HTML_QUALITY_RULES = """
+## HTML 质量规则（必须严格遵守）
+
+- 英文单词之间只用一个空格，禁止出现连续多个空格
+- 中英文之间加一个空格（如「使用 Python 开发」）
+- 表格文字颜色必须与背景有足够对比度：
+  - 表格文字颜色：#1a1a1a 或 #2d3748
+  - 表头背景：#f3f4f6，表头文字：#1a1a1a，加粗
+  - 表格行背景：白色 #ffffff，交替行 #f9fafb
+  - 禁止使用浅色文字配浅色背景"""
+
+
+def get_layout_instruction(layout_style=""):
+    """根据排版样式返回对应的排版指令。"""
+    if not layout_style or layout_style == "custom":
+        return ""
+    return LAYOUT_INSTRUCTIONS.get(layout_style, "")
+
+
+def get_agent_system_prompt(template_prompt="", file_formats=None, layout_style=""):
     """
     构建 Agent 系统提示词。
 
     Args:
         template_prompt: 模板自定义提示词（写作风格与排版要求）
         file_formats: 上传文件格式信息 [{name, ext}]，用于翻译场景
+        layout_style: 排版样式 (modular/chapter/card/narrative/custom)
     """
     today = datetime.now().strftime("%Y年%m月%d日")
     current_year = datetime.now().year
@@ -52,6 +118,14 @@ def get_agent_system_prompt(template_prompt="", file_formats=None):
 - 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
 - 正文字号 15px，行高 1.8，颜色 #333"""
 
+    # 注入 HTML 质量规则
+    base_prompt += HTML_QUALITY_RULES
+
+    # 注入排版样式指令
+    layout_inst = get_layout_instruction(layout_style)
+    if layout_inst:
+        base_prompt += layout_inst
+
     # 合并模板特定的写作要求
     if template_prompt:
         base_prompt += f"""
@@ -83,7 +157,6 @@ def get_agent_system_prompt(template_prompt="", file_formats=None):
 ## 默认 HTML 排版规范
 
 - 使用 section 标签分段，全部内联 CSS
-- 每个主题用不同主题色的 PART 标签区分
 - 关键数字用大号加粗彩色突出
 - 对比数据用表格呈现（表格要有边框和交替行色）
 - 个人点评用特殊样式区分（带虚线边框或不同底色的卡片）

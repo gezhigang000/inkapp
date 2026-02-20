@@ -244,10 +244,11 @@ def make_timestamp():
 # ============================================================
 
 
-def generate_article(topic=None, config=None, custom_prompt=None, file_contents=None):
+def generate_article(topic=None, config=None, custom_prompt=None, file_contents=None, layout_style=""):
     """调用 LLM 生成文章。topic 指定时走深度调研，否则走日报模式。
     custom_prompt: 模板自定义提示词，包含 {{TOPIC}} 占位符，覆盖默认提示词。
     file_contents: 用户上传的文件文本内容，单独传递避免污染 topic。
+    layout_style: 排版样式 (modular/chapter/card/narrative/custom)。
     """
     if config is None:
         config = {}
@@ -256,15 +257,18 @@ def generate_article(topic=None, config=None, custom_prompt=None, file_contents=
     if topic:
         return _generate_topic_research(topic, today, config,
                                         custom_prompt=custom_prompt,
-                                        file_contents=file_contents)
+                                        file_contents=file_contents,
+                                        layout_style=layout_style)
     else:
-        return _generate_daily_news(today, config, custom_prompt=custom_prompt)
+        return _generate_daily_news(today, config, custom_prompt=custom_prompt,
+                                    layout_style=layout_style)
 
 
-def _generate_topic_research(topic, today, config, custom_prompt=None, file_contents=None):
+def _generate_topic_research(topic, today, config, custom_prompt=None, file_contents=None, layout_style=""):
     """深度调研模式：围绕指定 topic 搜索官方资料做深度分析"""
     from llm_adapter import generate, LLMError
     from search_adapter import search_and_fetch
+    from agent_prompts import get_layout_instruction, HTML_QUALITY_RULES
 
     if custom_prompt:
         # 使用模板自定义提示词，替换 {{TOPIC}} 占位符
@@ -273,6 +277,12 @@ def _generate_topic_research(topic, today, config, custom_prompt=None, file_cont
         with open(TOPIC_PROMPT_FILE, "r", encoding="utf-8") as f:
             prompt_template = f.read()
         prompt = f"今天是 {today}。\n\n" + prompt_template.replace("{{TOPIC}}", topic)
+
+    # 注入排版样式指令和 HTML 质量规则
+    layout_inst = get_layout_instruction(layout_style)
+    if layout_inst:
+        prompt += "\n" + layout_inst
+    prompt += "\n" + HTML_QUALITY_RULES
 
     # 有上传文件时：跳过联网搜索，将数据附加到 prompt 末尾
     has_file_data = bool(file_contents and file_contents.strip())
@@ -328,7 +338,7 @@ def _generate_topic_research(topic, today, config, custom_prompt=None, file_cont
     return html_content
 
 
-def _generate_daily_news(today, config, custom_prompt=None):
+def _generate_daily_news(today, config, custom_prompt=None, layout_style=""):
     """日报模式：搜索多家公司最新动态生成日报"""
     from llm_adapter import generate, LLMError
     from search_adapter import search_and_fetch
@@ -340,6 +350,8 @@ def _generate_daily_news(today, config, custom_prompt=None):
 
     companies = list(variation["companies"])
     companies_str = "、".join(companies)
+
+    from agent_prompts import get_layout_instruction, HTML_QUALITY_RULES
 
     if custom_prompt:
         # 使用模板自定义提示词
@@ -365,6 +377,12 @@ def _generate_daily_news(today, config, custom_prompt=None):
         variation_parts.append("")  # 空行分隔
 
         prompt = "\n".join(variation_parts) + "\n" + prompt_template
+
+    # 注入排版样式指令和 HTML 质量规则
+    layout_inst = get_layout_instruction(layout_style)
+    if layout_inst:
+        prompt += "\n" + layout_inst
+    prompt += "\n" + HTML_QUALITY_RULES
 
     provider = config.get("LLM_PROVIDER", "claude").lower()
     topic_label = f"（方向: {effective_topic}）" if effective_topic else ""

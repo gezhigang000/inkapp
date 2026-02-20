@@ -1,3 +1,19 @@
+export type LayoutStyle = "modular" | "chapter" | "card" | "narrative" | "custom";
+
+export interface LayoutStyleOption {
+  id: LayoutStyle;
+  label: string;
+  description: string;
+}
+
+export const LAYOUT_STYLES: LayoutStyleOption[] = [
+  { id: "modular", label: "模块式", description: "PART 1 / PART 2 分区，不同主题色" },
+  { id: "chapter", label: "章节式", description: "一、二、三 或 01 / 02 / 03 编号" },
+  { id: "card", label: "卡片式", description: "独立卡片，无编号，视觉分隔" },
+  { id: "narrative", label: "叙事式", description: "自然段落流，无分区标签" },
+  { id: "custom", label: "自定义", description: "由提示词自行控制排版结构" },
+];
+
 export interface PromptTemplate {
   id: string;
   name: string;
@@ -11,15 +27,17 @@ export interface PromptTemplate {
   agentMode?: boolean;
   /** Agent 模式最大轮次（内置，用户不可见） */
   maxTurns?: number;
+  /** 排版样式 */
+  layoutStyle?: LayoutStyle;
 }
 
-const DEEP_RESEARCH_PROMPT = `你是一个有十年工作经验的软件工程师，同时也是一个 AI 技术领域的深度研究者，在微信公众号上分享你对前沿技术的深度调研和独立思考。
+const DEEP_RESEARCH_PROMPT = `你是一位深度研究者和内容创作者，在微信公众号上分享你对前沿领域的深度调研和独立思考。
 
 你的写作风格：
-- 像一个懂技术的老朋友在做深度分享，不是泛泛而谈的新闻播报
+- 像一个懂行的老朋友在做深度分享，不是泛泛而谈的新闻播报
 - 直接进入主题，不要用「我花了几天调研」「以下是我的发现」这类自我强调的开场白
-- 对技术细节有自己的理解和判断，不只是搬运官方文档，要加入自己的解读
-- 会结合实际开发经验来评价，比如「这个架构设计意味着…」「做过类似项目的都知道…」
+- 有自己的理解和判断，不只是搬运官方文档，要加入自己的解读
+- 会结合实际经验来评价，给出有深度的分析
 - 语气务实、有深度，该夸的夸，该泼冷水的泼冷水
 - 不要反复强调「这是我的独立判断」「说实话」「坦白讲」之类的语气词，让内容本身说话
 
@@ -59,13 +77,22 @@ const DEEP_RESEARCH_PROMPT = `你是一个有十年工作经验的软件工程�
 - 不要在文章顶部生成标题区域，直接从正文内容开始
 - 使用 section 标签分段，全部内联 CSS
 - 正文字号 15px，行高 1.8，颜色 #333
-- 每个主题用不同主题色的 PART 标签区分
 - 关键数字用大号加粗彩色突出
-- 技术对比用表格呈现（表格要有边框和交替行色）
+- 对比数据用表格呈现（表格要有边框和交替行色）
 - 个人点评部分用特殊样式区分（带虚线边框或不同底色的卡片，前面加「💬 深度解读」标签）
 - 引用原文用斜体引用框样式
 - 文末附参考来源（附原始链接）
 - 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
+
+## HTML 质量规则（必须严格遵守）
+
+- 英文单词之间只用一个空格，禁止出现连续多个空格
+- 中英文之间加一个空格（如「使用 Python 开发」）
+- 表格文字颜色必须与背景有足够对比度：
+  - 表格文字颜色：#1a1a1a 或 #2d3748
+  - 表头背景：#f3f4f6，表头文字：#1a1a1a，加粗
+  - 表格行背景：白色 #ffffff，交替行 #f9fafb
+  - 禁止使用浅色文字配浅色背景
 
 ## 关键输出规则（必须严格遵守）
 
@@ -74,7 +101,7 @@ const DEEP_RESEARCH_PROMPT = `你是一个有十年工作经验的软件工程�
 - 禁止输出文章大纲、要点列表或写作思路
 - 你的回复中不应该有任何非 HTML 的内容`;
 
-const DATA_ANALYSIS_PROMPT = `你是一位资深数据分析师（10年+经验），擅长从原始数据中挖掘深层洞察，曾为多家企业提供数据驱动的决策建议。
+const DATA_ANALYSIS_PROMPT = `你是一位资深数据分析师，擅长从原始数据中挖掘深层洞察，提供数据驱动的决策建议。
 
 ## 分析任务
 
@@ -132,6 +159,16 @@ const DATA_ANALYSIS_PROMPT = `你是一位资深数据分析师（10年+经验�
 - 使用 section 标签分段，全部内联 CSS
 - 正文字号 15px，行高 1.8，颜色 #333
 - 字体：-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif
+
+## HTML 质量规则（必须严格遵守）
+
+- 英文单词之间只用一个空格，禁止出现连续多个空格
+- 中英文之间加一个空格
+- 表格文字颜色必须与背景有足够对比度：
+  - 表格文字颜色：#1a1a1a 或 #2d3748
+  - 表头背景：#f3f4f6，表头文字：#1a1a1a，加粗
+  - 表格行背景：白色 #ffffff，交替行 #f9fafb
+  - 禁止使用浅色文字配浅色背景
 
 请只输出 HTML 内容。HTML 以 <section 开头，以 </section> 结尾。`;
 
@@ -279,6 +316,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     builtin: true,
     agentMode: true,
     maxTurns: 15,
+    layoutStyle: "modular",
   },
   {
     id: "video-analysis",
@@ -301,6 +339,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     builtin: true,
     agentMode: true,
     maxTurns: 10,
+    layoutStyle: "chapter",
   },
   {
     id: "ppt-maker",
@@ -313,6 +352,7 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     builtin: true,
     agentMode: true,
     maxTurns: 8,
+    layoutStyle: "custom",
   },
   {
     id: "translate",
@@ -323,5 +363,6 @@ export const BUILTIN_TEMPLATES: PromptTemplate[] = [
     prompt: TRANSLATE_PROMPT,
     inputType: "topic",
     builtin: true,
+    layoutStyle: "custom",
   },
 ];

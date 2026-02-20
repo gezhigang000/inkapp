@@ -77,6 +77,11 @@ export default function Create() {
       payload.template_prompt = selectedTemplate.prompt;
     }
 
+    // Pass layout style
+    if (selectedTemplate?.layoutStyle) {
+      payload.layout_style = selectedTemplate.layoutStyle;
+    }
+
     if (keyName) payload[keyName] = getConfig(keyName);
     const modelKey = MODEL_PROVIDERS.find(p => p.id === selectedProvider)
       ?.configKeys.find(ck => ck.type !== "password")?.key;

@@ -148,11 +148,8 @@ TOOL_DEFINITIONS = [
 def init_workspace(task_id, base_dir=None):
     """Create isolated workspace: {base_dir}/{task_id}/{input,data,output}/"""
     if base_dir is None:
-        if sys.platform == "win32":
-            _app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-            base_dir = os.path.join(_app_data, "Ink", "agent-workspace")
-        else:
-            base_dir = os.path.join(os.path.expanduser("~"), ".ink", "agent-workspace")
+        from ink_env import INK_HOME
+        base_dir = str(INK_HOME / "agent-workspace")
 
     workspace = os.path.join(base_dir, task_id)
     for sub in ("input", "data", "output"):
@@ -179,33 +176,52 @@ def tool_web_search(query, config):
     except ImportError:
         return json.dumps({"error": "search_adapter not available", "results": []})
 
-    # 自动检测搜索提供商：优先用户配置，否则根据可用 API Key 判断
-    provider = config.get("SEARCH_PROVIDER", "").lower()
-    if not provider:
-        if config.get("TAVILY_API_KEY"):
-            provider = "tavily"
-        elif config.get("SERPAPI_API_KEY"):
-            provider = "serpapi"
-        else:
-            return json.dumps({"error": "No search API key configured", "results": []})
-    try:
-        if provider == "tavily":
-            results = _search_via_tavily([query], config, fetch_top_n=5)
-        elif provider == "serpapi":
-            results = _search_via_serpapi([query], config, fetch_top_n=5)
-        else:
-            return json.dumps({"error": f"Unknown search provider: {provider}", "results": []})
+    has_tavily = bool(config.get("TAVILY_API_KEY"))
+    has_serpapi = bool(config.get("SERPAPI_API_KEY"))
 
-        formatted = []
-        for item in results:
-            formatted.append({
-                "title": item.get("title", ""),
-                "url": item.get("url", ""),
-                "snippet": item.get("content", "")[:500],
-            })
-        return json.dumps({"results": formatted}, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"error": str(e), "results": []}, ensure_ascii=False)
+    # Build ordered provider list: user preference first, then fallback
+    provider = config.get("SEARCH_PROVIDER", "auto").lower()
+    if provider == "auto":
+        order = []
+        if has_tavily:
+            order.append("tavily")
+        if has_serpapi:
+            order.append("serpapi")
+    elif provider == "tavily":
+        order = ["tavily"]
+        if has_serpapi:
+            order.append("serpapi")
+    elif provider == "serpapi":
+        order = ["serpapi"]
+        if has_tavily:
+            order.append("tavily")
+    else:
+        return json.dumps({"error": f"Unknown search provider: {provider}", "results": []})
+
+    if not order:
+        return json.dumps({"error": "No search API key configured", "results": []})
+
+    for p in order:
+        try:
+            if p == "tavily":
+                results = _search_via_tavily([query], config, fetch_top_n=5)
+            else:
+                results = _search_via_serpapi([query], config, fetch_top_n=5)
+
+            if results:
+                formatted = []
+                for item in results:
+                    formatted.append({
+                        "title": item.get("title", ""),
+                        "url": item.get("url", ""),
+                        "snippet": item.get("content", "")[:500],
+                    })
+                return json.dumps({"results": formatted}, ensure_ascii=False)
+        except Exception as e:
+            logger.warning("Search provider %s failed: %s", p, e)
+            continue
+
+    return json.dumps({"error": "All search providers returned empty results", "results": []}, ensure_ascii=False)
 
 
 def tool_run_python(code, workspace):

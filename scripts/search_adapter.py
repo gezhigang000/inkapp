@@ -19,17 +19,39 @@ def search_and_fetch(queries, config, fetch_top_n=2):
     返回:
         格式化的搜索结果文本，可直接注入 prompt
     """
-    provider = config.get("SEARCH_PROVIDER", "tavily").lower()
+    provider = config.get("SEARCH_PROVIDER", "auto").lower()
 
-    if provider == "tavily":
-        results = _search_via_tavily(queries, config, fetch_top_n)
+    has_tavily = bool(config.get("TAVILY_API_KEY"))
+    has_serpapi = bool(config.get("SERPAPI_API_KEY"))
+
+    # Build ordered list of providers to try
+    if provider == "auto":
+        order = []
+        if has_tavily:
+            order.append("tavily")
+        if has_serpapi:
+            order.append("serpapi")
+    elif provider == "tavily":
+        order = ["tavily"]
+        if has_serpapi:
+            order.append("serpapi")
     elif provider == "serpapi":
-        results = _search_via_serpapi(queries, config, fetch_top_n)
+        order = ["serpapi"]
+        if has_tavily:
+            order.append("tavily")
     else:
         print(f"[警告] 不支持的搜索提供商: {provider}，跳过搜索")
         return ""
 
-    return format_search_context(results)
+    for p in order:
+        if p == "tavily":
+            results = _search_via_tavily(queries, config, fetch_top_n)
+        else:
+            results = _search_via_serpapi(queries, config, fetch_top_n)
+        if results:
+            return format_search_context(results)
+
+    return ""
 
 
 def _search_via_tavily(queries, config, fetch_top_n):

@@ -40,21 +40,28 @@ if PYLIB_DIR.exists():
 
 CONFIG_FILE = PROJECT_ROOT / "config.env"
 
+from ink_env import INK_HOME, get_cjk_font_paths
+
 # 提示词：优先使用用户自定义目录，回退到内置默认
-_USER_PROMPTS_DIR = Path.home() / "Ink" / "prompts"
+# Legacy fallback: ~/Ink/prompts (pre-cross-platform path)
+_LEGACY_PROMPTS_DIR = Path.home() / "Ink" / "prompts"
+_USER_PROMPTS_DIR = INK_HOME / "prompts"
 _BUNDLED_PROMPTS_DIR = PROJECT_ROOT / "prompts"
 
 def _resolve_prompt(filename):
-    """优先用户目录，回退内置"""
+    """优先用户目录，legacy 回退，最后内置"""
     user_path = _USER_PROMPTS_DIR / filename
     if user_path.exists():
         return user_path
+    legacy_path = _LEGACY_PROMPTS_DIR / filename
+    if legacy_path.exists():
+        return legacy_path
     return _BUNDLED_PROMPTS_DIR / filename
 
 PROMPT_FILE = _resolve_prompt("prompt_template.txt")
 TOPIC_PROMPT_FILE = _resolve_prompt("topic_prompt_template.txt")
 QRCODE_IMAGE = PROJECT_ROOT / "assets" / "扫码_搜索联合传播样式-白色版-compressed.jpg"
-QRCODE_URL_CACHE = Path.home() / "Ink" / ".qrcode_url.cache"
+QRCODE_URL_CACHE = INK_HOME / ".qrcode_url.cache"
 
 
 # ============================================================
@@ -1018,12 +1025,7 @@ def generate_cover_image(timestamp, title, topic, output_dir, cover_theme=None,
     draw.rectangle([(0, 0), (W, 4)], fill=accent_color)
 
     # --- 加载字体 ---
-    font_paths = [
-        "/System/Library/Fonts/STHeiti Medium.ttc",
-        "/System/Library/Fonts/Hiragino Sans GB.ttc",
-        "/System/Library/Fonts/PingFang.ttc",
-        "/System/Library/Fonts/Supplemental/Songti.ttc",
-    ]
+    font_paths = get_cjk_font_paths()
     font_path = None
     for fp in font_paths:
         if os.path.exists(fp):

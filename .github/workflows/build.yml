@@ -52,6 +52,7 @@ jobs:
             --hidden-import oss2 \
             --hidden-import agent_loop \
             --hidden-import agent_prompts \
+            --hidden-import ink_env \
             --hidden-import reportlab \
             --hidden-import reportlab.lib.pagesizes \
             --hidden-import reportlab.pdfgen \

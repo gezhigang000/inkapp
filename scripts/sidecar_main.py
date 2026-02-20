@@ -37,14 +37,10 @@ if os.path.exists(PYLIB_DIR) and PYLIB_DIR not in sys.path:
     sys.path.insert(0, PYLIB_DIR)
 
 # ============================================================
-# 本地日志 & 缓存目录
-# 跨平台：Windows 用 %APPDATA%/Ink，macOS/Linux 用 ~/.ink
+# 本地日志 & 缓存目录（跨平台）
 # ============================================================
-if sys.platform == "win32":
-    _app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-    INK_HOME = os.path.join(_app_data, "Ink")
-else:
-    INK_HOME = os.path.join(os.path.expanduser("~"), ".ink")
+from ink_env import INK_HOME
+INK_HOME = str(INK_HOME)  # keep as str for os.path.join compat
 LOG_DIR = os.path.join(INK_HOME, "logs")
 CACHE_DIR = os.path.join(INK_HOME, "cache")
 os.makedirs(LOG_DIR, exist_ok=True)

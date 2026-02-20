@@ -81,7 +81,7 @@ Agent 没有复用 `llm_adapter.py` 的 `generate()` 函数，而是自己用 `r
 
 ### 2. Workspace 隔离
 
-每次 Agent 运行在 `~/.ink/agent-workspace/{timestamp}/` 下，包含 `input/`、`data/`、`output/` 三个子目录。好处：
+每次 Agent 运行在 `INK_HOME/agent-workspace/{timestamp}/` 下（macOS/Linux: `~/.ink/`，Windows: `%APPDATA%/Ink/`），包含 `input/`、`data/`、`output/` 三个子目录。好处：
 
 - 防止多次运行之间文件冲突
 - `run_python` 的 cwd 限定在 workspace 内
@@ -148,3 +148,29 @@ Rust 侧从固定字段的 `SidecarEvent` struct 改为 `serde_json::Value` 透�
 | PPT 制作 | ✅ | 8 | custom | 读取上传资料 + 生成 PPT 内容 |
 | 文档翻译 | ✅ | 5 | — | 读文件 → 翻译 → 写文件 |
 | 视频分析 | ❌ | — | — | 独立流程 |
+
+## 六、跨平台支持（v1.9.2）
+
+### 共享路径模块 `ink_env.py`
+
+消除 3 处重复的 INK_HOME 逻辑，统一到 `scripts/ink_env.py`：
+
+| 平台 | INK_HOME | CJK 字体 |
+|------|----------|----------|
+| macOS | `~/.ink` | STHeiti / Hiragino / PingFang / Songti |
+| Windows | `%APPDATA%/Ink` | msyh.ttc / simhei.ttf / simsun.ttc |
+| Linux | `~/.ink` | Noto Sans CJK / WenQuanYi |
+
+引用方：`sidecar_main.py`、`agent_loop.py`、`daily_ai_news.py`
+
+### 搜索引擎自动降级
+
+`search_adapter.py` 和 `agent_loop.py` 的搜索逻辑支持 `auto` 模式（默认）：
+
+1. 优先尝试 Tavily（如有 key）
+2. 结果为空则尝试 SerpAPI（如有 key）
+3. 指定 provider 时也会 fallback 到另一个
+
+### Tauri assetProtocol
+
+scope 同时包含 `$HOME/.ink/**`（macOS/Linux）和 `$APPDATA/Ink/**`（Windows）。

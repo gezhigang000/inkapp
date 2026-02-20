@@ -42,8 +42,9 @@ Tauri v2 桌面应用，集成多模型 AI 写作、Agent 深度调研、文档�
 │   ├── daily_ai_news.py          # 文章生成 + 封面图 + 微信发布
 │   ├── agent_loop.py             # Agent 模式：多轮工具调用循环
 │   ├── agent_prompts.py          # Agent 系统提示词
+│   ├── ink_env.py                # 跨平台共享路径（INK_HOME、CJK 字体）
 │   ├── llm_adapter.py            # LLM 适配层
-│   ├── search_adapter.py         # 搜索适配层
+│   ├── search_adapter.py         # 搜索适配层（Tavily/SerpAPI 自动降级）
 │   ├── translate_inplace.py      # 原格式文档翻译
 │   ├── image_processor.py        # 文章配图处理
 │   └── build_sidecar.py          # PyInstaller 打包脚本
